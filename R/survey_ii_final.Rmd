@@ -13,6 +13,14 @@ Objectives:
 
 -   Individual-level indicators complemented with country-level factors (e.g., cultural norms, legal frameworks. historical context, economic variables, societal attitudes towards LGBTI+ rights)
 
+## Context
+
+### NORDICS
+
+### BALTICS
+
+### UKI
+
 # Predictive Model
 
 Objectives:
