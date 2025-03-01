@@ -1,17 +1,81 @@
+# Table of contents -------------------------------------------------------
+# 1. vdemdata CHECK
+# 2. Rainbowmap CHECK
+# 3. Marriage SOME WORK NEEDED
+# 4. Economist Democracy Scores for 2018 CHECK
+# 5. Happiness CHECK
+# 6. GDP per capita CHEDK
+
+
+### further ideas:
+# migrant acceptance scores
+# welfare state/ size of government relative to GDP
+# physical/ mental health issues; quality and equity of healthcare
+# solidarity with minority groups
+# education
+
+
+# load libraries ----------------------------------------------------------
 library(tidyverse)
+library(dplyr)
+library(readr)
+library(vdemdata)
 
-###
-devtools::install_github("vdeminstitute/vdemdata")
 
-### rainbowmap: https://rainbowmap.ilga-europe.org/
+# mapping -----------------------------------------------------------------
+country_mapping <- data.frame(
+  country_name = c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", 
+                   "Czech Republic", "Denmark", "Estonia", "Finland", "France", 
+                   "Germany", "Greece", "Hungary", "Ireland", "Italy", 
+                   "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", 
+                   "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", 
+                   "Spain", "Sweden", "United Kingdom"),
+  iso2 = c("AT", "BE", "BG", "HR", "CY", 
+           "CZ", "DK", "EE", "FI", "FR", 
+           "DE", "GR", "HU", "IE", "IT", 
+           "LV", "LT", "LU", "MT", "NL", 
+           "PL", "PT", "RO", "SK", "SI", 
+           "ES", "SE", "GB"),
+  country_code = 1:28,  # adjust these numeric codes based on your actual survey coding
+  stringsAsFactors = FALSE)
+
+
+# 1. vdemdata ----------------------------------------------------------------
+# install the package frlm GitHub first
+# devtools::install_github("vdeminstitute/vdemdata")
+vdem_data <- vdem
+
+eu_countries <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", 
+                  "Czech Republic", "Denmark", "Estonia", "Finland", "France", 
+                  "Germany", "Greece", "Hungary", "Ireland", "Italy", "Latvia", 
+                  "Lithuania", "Luxembourg", "Malta", "Netherlands", "Poland", 
+                  "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden")
+
+# filter for most recent data (2019 to match your survey) for EU countries
+vdem_eu_2019 <- vdem_data %>%
+  filter(country_name %in% eu_countries, year == 2019) %>%
+  select(country_name, v2x_libdem, v2x_polyarchy, v2x_gender, 
+         v2x_egaldem, v2x_liberal, v2xcs_ccsi, v2x_freexp)  # select relevant variables
+
+## from the codebook: 
+# v2x_libdem: index of liberal democracy
+# v2x_polyarchy: index of electoral democracy
+# v2x_gender: index of women's political empowerment
+# v2x_egaldem: index of egalitarian democracy   
+# v2x_liberal: index of civil liberties
+# v2xcs_ccsi:  index of civil society participation
+# v2x_freexp: index of freedom of expression
+
+
+# 2. Rainbowmap --------------------------------------------------------------
+# https://rainbowmap.ilga-europe.org/
+
 rainbow_data <- read_csv("data/raw/2024-rainbow-map-data.csv")
 
 # but the problem: that's for 2024, not 2019 or before 2019
 # hence, we would need to get the data for 2019 and years before:
-# Load necessary library
-library(dplyr)
 
-# Create data frames for each year
+# create data frames for each year
 df_2019 <- data.frame(
   Country = c("Malta", "Belgium", "United Kingdom", "Norway", "France", "Finland",
               "Denmark", "Spain", "Portugal", "Sweden", "Netherlands", "Austria",
@@ -47,37 +111,200 @@ df_2018 <- data.frame(
   Year = 2018)
 
 df_2017 <- data.frame(
-  Country = c("Malta", "Norway", "United Kingdom", "Belgium", "France", "Portugal", "Finland", "Denmark", "Spain", "Netherlands", "Croatia", "Sweden", "Austria", "Germany", "Ireland", "Iceland", "Greece", "Luxembourg", "Hungary", "Slovenia", "Montenegro", "Andorra", "Estonia", "Albania", "Bosnia & Herzegovina", "Switzerland", "Kosovo", "Serbia", "Czechia", "Cyprus", "Slovakia", "Italy", "Georgia", "Bulgaria", "Romania", "Ukraine", "Poland", "Liechtenstein", "Lithuania", "Latvia", "North Macedonia", "Belarus", "Moldova", "San Marino", "Monaco", "Turkey", "Armenia", "Azerbaijan"),
-  Value = c(77.74, 75.73, 71.86, 70.82, 69.16, 68.27, 67.69, 67.03, 64.44, 62.36, 60.10, 55.58, 54.41, 52.22, 47.22, 46.92, 46.48, 44.82, 44.28, 38.64, 34.81, 33.31, 33.24, 31.34, 30.94, 30.48, 29.68, 29.20, 28.95, 27.60, 26.67, 25.87, 23.15, 21.12, 19.00, 18.23, 17.87, 17.28, 17.12, 16.03, 13.35, 13.08, 12.32, 9.78, 8.60, 7.20, 6.40, 4.70),
-  Year = 2017
-)
+  Country = c("Malta", "Norway", "United Kingdom", "Belgium", "France", "Portugal",
+              "Finland", "Denmark", "Spain", "Netherlands", "Croatia", "Sweden", 
+              "Austria", "Germany", "Ireland", "Iceland", "Greece", "Luxembourg", 
+              "Hungary", "Slovenia", "Montenegro", "Andorra", "Estonia", "Albania",
+              "Bosnia & Herzegovina", "Switzerland", "Kosovo", "Serbia", "Czechia", 
+              "Cyprus", "Slovakia", "Italy", "Georgia", "Bulgaria", "Romania", 
+              "Ukraine", "Poland", "Liechtenstein", "Lithuania", "Latvia", 
+              "North Macedonia", "Belarus", "Moldova", "San Marino", "Monaco", 
+              "Turkey", "Armenia", "Azerbaijan"),
+  Value = c(77.74, 75.73, 71.86, 70.82, 69.16, 68.27, 67.69, 67.03, 64.44, 62.36,
+            60.10, 55.58, 54.41, 52.22, 47.22, 46.92, 46.48, 44.82, 44.28, 38.64, 
+            34.81, 33.31, 33.24, 31.34, 30.94, 30.48, 29.68, 29.20, 28.95, 27.60, 
+            26.67, 25.87, 23.15, 21.12, 19.00, 18.23, 17.87, 17.28, 17.12, 16.03, 
+            13.35, 13.08, 12.32, 9.78, 8.60, 7.20, 6.40, 4.70),
+  Year = 2017)
 
 df_2016 <- data.frame(
-  Country = c("Malta", "Belgium", "United Kingdom", "Spain", "Denmark", "Portugal", "Finland", "France", "Croatia", "Netherlands", "Norway", "Sweden", "Austria", "Iceland", "Greece", "Germany", "Ireland", "Hungary", "Luxembourg", "Montenegro", "Estonia", "Albania", "Switzerland", "Andorra", "Serbia", "Cyprus", "Slovenia", "Czechia", "Kosovo", "Georgia", "Bosnia & Herzegovina", "Slovakia", "Bulgaria", "Romania", "Italy", "Poland", "Liechtenstein", "Lithuania", "Latvia", "North Macedonia", "San Marino", "Moldova", "Belarus", "Monaco", "Turkey", "Armenia", "Azerbaijan"),
-  Value = c(77.75, 81.85, 79.19, 70.95, 70.90, 69.55, 67.25, 66.60, 66.55, 66.10, 65.15, 64.85, 62.21, 59.00, 58.30, 55.14, 54.70, 51.40, 50.35, 45.20, 38.25, 34.40, 33.15, 32.10, 32.00, 31.95, 31.65, 31.60, 31.55, 30.35, 29.40, 29.20, 24.00, 23.45, 19.75, 18.30, 18.20, 18.10, 17.35, 15.55, 14.40, 14.15, 13.35, 10.80, 8.75, 7.20, 4.85),
-  Year = 2016
-)
+  Country = c("Malta", "Belgium", "United Kingdom", "Spain", "Denmark", "Portugal",
+              "Finland", "France", "Croatia", "Netherlands", "Norway", "Sweden", 
+              "Austria", "Iceland", "Greece", "Germany", "Ireland", "Hungary", 
+              "Luxembourg", "Montenegro", "Estonia", "Albania", "Switzerland", 
+              "Andorra", "Serbia", "Cyprus", "Slovenia", "Czechia", "Kosovo", 
+              "Georgia", "Bosnia & Herzegovina", "Slovakia", "Bulgaria", "Romania",
+              "Italy", "Poland", "Liechtenstein", "Lithuania", "Latvia", 
+              "North Macedonia", "San Marino", "Moldova", "Belarus", "Monaco", 
+              "Turkey", "Armenia", "Azerbaijan"),
+  Value = c(77.75, 81.85, 79.19, 70.95, 70.90, 69.55, 67.25, 66.60, 66.55, 66.10, 
+            65.15, 64.85, 62.21, 59.00, 58.30, 55.14, 54.70, 51.40, 50.35, 45.20, 
+            38.25, 34.40, 33.15, 32.10, 32.00, 31.95, 31.65, 31.60, 31.55, 30.35, 
+            29.40, 29.20, 24.00, 23.45, 19.75, 18.30, 18.20, 18.10, 17.35, 15.55, 
+            14.40, 14.15, 13.35, 10.80, 8.75, 7.20, 4.85),
+  Year = 2016)
 
 df_2015 <- data.frame(
-  Country = c("United Kingdom", "Belgium", "Malta", "Sweden", "Croatia", "Netherlands", "Norway", "Spain", "Denmark", "Portugal", "France", "Iceland", "Finland", "Germany", "Austria", "Hungary", "Montenegro", "Luxembourg", "Albania", "Ireland", "Greece", "Georgia", "Czechia", "Estonia", "Slovenia", "Andorra", "Bosnia & Herzegovina", "Serbia", "Slovakia", "Romania", "Switzerland", "Bulgaria", "Poland", "Italy", "Liechtenstein", "Lithuania", "Cyprus", "Kosovo", "Latvia", "Moldova", "Belarus", "San Marino", "North Macedonia", "Turkey", "Monaco", "Armenia", "Azerbaijan"),
-  Value = c(88.00, 83.00, 77.00, 72.00, 71.00, 69.00, 69.00, 69.00, 68.00, 67.00, 65.00, 63.00, 62.00, 56.00, 52.00, 50.00, 46.00, 43.00, 42.00, 40.00, 39.00, 36.00, 35.00, 34.00, 32.00, 31.00, 29.00, 29.00, 29.00, 28.00, 28.00, 27.00, 26.00, 22.00, 19.00, 19.00, 18.00, 18.00, 18.00, 16.00, 14.00, 14.00, 13.00, 12.00, 11.00, 9.00, 5.00),
-  Year = 2015
-)
+  Country = c("United Kingdom", "Belgium", "Malta", "Sweden", "Croatia", "Netherlands",
+              "Norway", "Spain", "Denmark", "Portugal", "France", "Iceland", "Finland", 
+              "Germany", "Austria", "Hungary", "Montenegro", "Luxembourg", "Albania",
+              "Ireland", "Greece", "Georgia", "Czechia", "Estonia", "Slovenia",
+              "Andorra", "Bosnia & Herzegovina", "Serbia", "Slovakia", "Romania",
+              "Switzerland", "Bulgaria", "Poland", "Italy", "Liechtenstein", 
+              "Lithuania", "Cyprus", "Kosovo", "Latvia", "Moldova", "Belarus",
+              "San Marino", "North Macedonia", "Turkey", "Monaco", "Armenia", 
+              "Azerbaijan"),
+  Value = c(88.00, 83.00, 77.00, 72.00, 71.00, 69.00, 69.00, 69.00, 68.00, 67.00,
+            65.00, 63.00, 62.00, 56.00, 52.00, 50.00, 46.00, 43.00, 42.00, 40.00,
+            39.00, 36.00, 35.00, 34.00, 32.00, 31.00, 29.00, 29.00, 29.00, 28.00, 
+            28.00, 27.00, 26.00, 22.00, 19.00, 19.00, 18.00, 18.00, 18.00, 16.00,
+            14.00, 14.00, 13.00, 12.00, 11.00, 9.00, 5.00),
+  Year = 2015)
 
 df_2014 <- data.frame(
-  Country = c("United Kingdom", "Belgium", "Spain", "Netherlands", "Norway", "Portugal", "Sweden", "France", "Iceland", "Denmark", "Malta", "Croatia", "Germany", "Hungary", "Austria", "Montenegro", "Finland", "Albania", "Slovenia", "Czechia", "Estonia", "Ireland", "Greece", "Slovakia", "Serbia", "Bulgaria", "Switzerland", "Luxembourg", "Romania", "Poland", "Italy", "Georgia", "Lithuania", "Andorra", "Bosnia & Herzegovina", "Cyprus", "Latvia", "Liechtenstein", "Kosovo", "Moldova", "Turkey", "San Marino", "Belarus", "North Macedonia", "Ukraine", "Monaco", "Armenia", "Azerbaijan"),
-  Value = c(80.25, 78.10, 73.26, 69.90, 68.40, 66.60, 65.30, 64.10, 63.95, 59.90, 56.80, 56.30, 55.68, 53.65, 52.10, 47.05, 45.30, 38.40, 35.00, 34.65, 34.65, 33.65, 31.15, 30.50, 30.30, 30.00, 28.85, 28.35, 27.95, 27.65, 27.40, 28.05, 21.70, 20.60, 20.10, 19.65, 19.65, 18.00, 17.10, 16.50, 14.15, 13.70, 13.60, 13.30, 11.65, 10.10, 8.50, 6.60),
-  Year = 2014
-)
+  Country = c("United Kingdom", "Belgium", "Spain", "Netherlands", "Norway", 
+              "Portugal", "Sweden", "France", "Iceland", "Denmark", "Malta", 
+              "Croatia", "Germany", "Hungary", "Austria", "Montenegro", "Finland",
+              "Albania", "Slovenia", "Czechia", "Estonia", "Ireland", "Greece", 
+              "Slovakia", "Serbia", "Bulgaria", "Switzerland", "Luxembourg", 
+              "Romania", "Poland", "Italy", "Georgia", "Lithuania", "Andorra",
+              "Bosnia & Herzegovina", "Cyprus", "Latvia", "Liechtenstein", "Kosovo",
+              "Moldova", "Turkey", "San Marino", "Belarus", "North Macedonia", 
+              "Ukraine", "Monaco", "Armenia", "Azerbaijan"),
+  Value = c(80.25, 78.10, 73.26, 69.90, 68.40, 66.60, 65.30, 64.10, 63.95, 59.90,
+            56.80, 56.30, 55.68, 53.65, 52.10, 47.05, 45.30, 38.40, 35.00, 34.65, 
+            34.65, 33.65, 31.15, 30.50, 30.30, 30.00, 28.85, 28.35, 27.95, 27.65, 
+            27.40, 28.05, 21.70, 20.60, 20.10, 19.65, 19.65, 18.00, 17.10, 16.50,
+            14.15, 13.70, 13.60, 13.30, 11.65, 10.10, 8.50, 6.60),
+  Year = 2014)
 
 df_2013 <- data.frame(
-  Country = c("United Kingdom", "Belgium", "Norway", "Sweden", "Spain", "Portugal", "France", "Netherlands", "Denmark", "Iceland", "Hungary", "Germany", "Croatia", "Finland", "Austria", "Albania", "Malta", "Slovenia", "Czechia", "Ireland", "Romania", "Estonia", "Switzerland", "Luxembourg", "Greece", "Slovakia", "Montenegro", "Serbia", "Poland", "Georgia", "Lithuania", "Andorra", "Bosnia & Herzegovina", "Cyprus", "Latvia", "Italy", "Bulgaria", "Liechtenstein", "Turkey", "San Marino", "Belarus", "Kosovo", "North Macedonia", "Ukraine", "Monaco", "Armenia", "Azerbaijan"),
-  Value = c(78.50, 68.73, 65.65, 65.30, 65.04, 64.60, 64.10, 60.00, 59.80, 55.50, 54.70, 54.29, 48.30, 47.25, 43.35, 38.40, 35.30, 35.00, 34.65, 33.65, 31.30, 28.90, 28.85, 28.35, 28.10, 28.90, 28.65, 25.05, 21.65, 21.05, 20.70, 20.60, 19.95, 19.65, 19.65, 19.40, 18.00, 15.50, 14.15, 13.70, 13.60, 13.50, 13.30, 11.65, 10.10, 7.50, 7.10),
-  Year = 2013
-)
+  Country = c("United Kingdom", "Belgium", "Norway", "Sweden", "Spain", "Portugal", 
+              "France", "Netherlands", "Denmark", "Iceland", "Hungary", "Germany",
+              "Croatia", "Finland", "Austria", "Albania", "Malta", "Slovenia", 
+              "Czechia", "Ireland", "Romania", "Estonia", "Switzerland", "Luxembourg",
+              "Greece", "Slovakia", "Montenegro", "Serbia", "Poland", "Georgia",
+              "Lithuania", "Andorra", "Bosnia & Herzegovina", "Cyprus", "Latvia", 
+              "Italy", "Bulgaria", "Liechtenstein", "Turkey", "San Marino", "Belarus",
+              "Kosovo", "North Macedonia", "Ukraine", "Monaco", "Armenia", "Azerbaijan"),
+  Value = c(78.50, 68.73, 65.65, 65.30, 65.04, 64.60, 64.10, 60.00, 59.80, 55.50,
+            54.70, 54.29, 48.30, 47.25, 43.35, 38.40, 35.30, 35.00, 34.65, 33.65, 
+            31.30, 28.90, 28.85, 28.35, 28.10, 28.90, 28.65, 25.05, 21.65, 21.05, 
+            20.70, 20.60, 19.95, 19.65, 19.65, 19.40, 18.00, 15.50, 14.15, 13.70, 
+            13.60, 13.50, 13.30, 11.65, 10.10, 7.50, 7.10),
+  Year = 2013)
 
-# Combine all data frames into one
+# combine all data frames into one
 df_combined <- bind_rows(df_2019, df_2018, df_2017, df_2016, df_2015, df_2014, df_2013)
 
-# Print the combined data frame
-print(df_combined)
+# create new, compressed df
+# step 1: Filter data for 2019 and 2018
+df_2019 <- df_combined %>% filter(Year == 2019) %>% rename(Value_2019 = Value)
+df_2018 <- df_combined %>% filter(Year == 2018) %>% rename(Value_2018 = Value)
+
+# step 2: Filter data for 2013 and 2014 and calculate the average
+df_2013_2014 <- df_combined %>% filter(Year %in% c(2013, 2014)) %>%
+  group_by(Country) %>%
+  summarise(Avg_2013_2014 = mean(Value, na.rm = TRUE))
+
+# step 3: Join the data frames for 2019 and 2018
+df_compressed <- df_2019 %>%
+  left_join(df_2018, by = "Country") %>%
+  select(Country, Value_2019, Value_2018)
+
+# step 4: Calculate the average for 2019 and 2018
+df_compressed <- df_compressed %>%
+  mutate(Avg_2019_2018 = (Value_2019 + Value_2018) / 2)
+
+# step 5: Join the average for 2013 and 2014
+df_compressed <- df_compressed %>%
+  left_join(df_2013_2014, by = "Country")
+
+# step 6: Calculate the difference between the averages
+df_compressed <- df_compressed %>%
+  mutate(Difference = Avg_2019_2018 - Avg_2013_2014)
+
+# step 7: Select and reorder columns for the final compressed data frame
+df_compressed <- df_compressed %>%
+  select(Country, Value_2019, Value_2018, Avg_2019_2018, 
+         Avg_2013_2014, Difference)
+
+rainbow_df <- df_compressed
+
+# save the data frame
+saveRDS(rainbow_df, file = "rainbow_df.rds")
+
+# 4. Marriage data -----------------------------------------------------------
+link <- "https://en.wikipedia.org/wiki/Recognition_of_same-sex_unions_in_Europe"
+html_website <- link |> read_html()
+all_tables <- html_website|> html_table()
+marriage_data <- all_tables[[4]]
+marriage_data <- marriage_data |> select(Status, Country)
+
+# cleaning the status column
+marriage_data$Status <- sub("\\s*\\(.*|\\s*-.*", "", marriage_data$Status)
+unique(marriage_data$Status)
+
+# cleaning the country column
+marriage_data <- marriage_data |> 
+  mutate(Country = str_replace_all(Country, c("\\*" = "", "†" = "", "\\[.*?\\]" = ""))) |> 
+  mutate(Country = trimws(Country))
+unique(marriage_data$Country)
+
+# getting rid of the total and subtotal rows
+marriage_data <- marriage_data |> 
+  filter(!Status %in% c("Total", "Subtotal"))
+
+# problem with this: some of the changes were made after 2019, so it's hard to
+# justify using this as an independent variable
+
+
+# 4. The Economist: Democracy scores 2018 ---------------------------------
+# https://enperspectiva.uy/wp-content/uploads/2019/01/Democracy_Index_2018.pdf
+democracy_scores <- data.frame(
+  Country = c("Belgium", "Denmark", "Greece", "Spain", "Finland", "France", "Ireland", "Italy", "Luxembourg", "Netherlands", "Austria", "Portugal", "Sweden", "Germany", "United Kingdom", "Bulgaria", "Cyprus", "Czech Republic", "Estonia", "Hungary", "Latvia", "Lithuania", "Malta", "Poland", "Romania", "Slovakia", "Slovenia", "Croatia"),
+  ISO2 = c("BE", "DK", "GR", "ES", "FI", "FR", "IE", "IT", "LU", "NL", "AT", "PT", "SE", "DE", "GB", "BG", "CY", "CZ", "EE", "HU", "LV", "LT", "MT", "PL", "RO", "SK", "SI", "HR"),
+  Overall_score = c(7.78, 9.22, 7.29, 8.08, 9.14, 7.80, 9.15, 7.71, 8.81, 8.89, 8.29, 7.84, 9.39, 8.68, 8.53, 7.03, 7.59, 7.69, 7.97, 6.63, 7.38, 7.50, 8.21, 6.67, 6.38, 7.10, 7.50, 6.57),
+  #Global_rank = c(31, 5, 39, 19, 8, 29, "6=", 33, 12, 11, 16, 27, 3, 13, 14, 46, 35, 34, "23=", "57=", 38, "36=", 18, "54=", "66=", 44, "36=", 60),
+  #Regional_rank = c(17, 4, 20, 14, 6, 16, 5, 18, 9, 8, 12, 15, 3, 10, 11, 7, 19, 2, 1, 9, 5, "3=", 13, 8, 12, 6, "3=", 10),
+  Electoral_process_and_pluralism = c(9.58, 10.00, 9.58, 9.17, 10.00, 9.58, 9.58, 9.58, 10.00, 9.58, 9.58, 9.58, 9.58, 9.58, 9.58, 9.17, 9.17, 9.58, 9.58, 8.75, 9.58, 9.58, 9.17, 9.17, 9.17, 9.58, 9.58, 9.17),
+  Functioning_of_government = c(8.93, 9.29, 5.36, 7.14, 8.93, 7.50, 7.86, 6.07, 8.93, 9.29, 7.86, 7.50, 9.64, 8.57, 7.50, 6.43, 6.43, 6.79, 8.21, 6.07, 6.07, 6.43, 8.21, 6.07, 5.71, 6.79, 6.79, 6.07),
+  Political_participation = c(5.00, 8.33, 6.11, 7.78, 8.33, 7.78, 8.33, 7.78, 6.67, 8.33, 8.33, 6.11, 8.33, 8.33, 8.33, 7.22, 6.67, 6.67, 6.67, 5.00, 5.56, 6.11, 6.11, 6.11, 5.00, 5.56, 6.67, 5.56),
+  Political_culture = c(6.88, 9.38, 6.88, 7.50, 8.75, 5.63, 10.00, 6.88, 8.75, 8.13, 6.88, 6.88, 10.00, 7.50, 8.13, 4.38, 6.88, 6.88, 6.88, 6.25, 6.88, 6.25, 8.75, 4.38, 4.38, 5.63, 6.25, 5.00),
+  Civil_liberties = c(8.53, 9.12, 8.53, 8.82, 9.71, 8.53, 10.00, 8.24, 9.71, 9.12, 8.82, 9.12, 9.41, 9.41, 9.12, 7.94, 8.82, 8.53, 8.53, 7.06, 8.82, 9.12, 8.82, 7.65, 7.65, 7.94, 8.24, 7.06),
+  Regime_type = c("Flawed democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Flawed democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Full democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Full democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy"))
+
+
+# 5. Happiness data 2018 ---------------------------------------------------------------------
+# https://s3.amazonaws.com/happiness-report/2018/WHR_web.pdf
+happiness_scores <- data.frame(
+  Country = c("Finland", "Denmark", "Greece", "Spain", "France", "Ireland", "Italy", "Luxembourg", "Netherlands", "Austria", "Portugal", "Sweden", "Germany", "United Kingdom", "Bulgaria", "Cyprus", "Czech Republic", "Estonia", "Hungary", "Latvia", "Lithuania", "Malta", "Poland", "Romania", "Slovakia", "Slovenia", "Croatia"),
+  ISO2 = c("FI", "DK", "GR", "ES", "FR", "IE", "IT", "LU", "NL", "AT", "PT", "SE", "DE", "GB", "BG", "CY", "CZ", "EE", "HU", "LV", "LT", "MT", "PL", "RO", "SK", "SI", "HR"),
+  Happiness_Score = c(7.632, 7.555, 5.358, 6.310, 6.489, 6.977, 6.000, 6.910, 7.441, 7.139, 5.410, 7.314, 6.965, 6.814, 4.933, 5.762, 6.711, 5.739, 5.620, 5.933, 5.952, 6.627, 6.123, 5.945, 6.173, 5.948, 5.321))
+
+
+# 6. GDP per capita ---------------------------------------------------------------------
+df_GDP <- read_csv("data/raw/data_20250228194704.csv")
+df_GDP <- df_GDP %>%
+  select("CountryName", "PeriodCode", "Value") %>%
+  filter(CountryName %in% country_mapping$country_name)
+
+df_GDP <- df_GDP %>%
+  mutate(Value = as.numeric(as.character(Value)))
+
+df_GDP <- df_GDP %>%
+  # group by country
+  group_by(CountryName) %>% 
+  # find first and last year values
+  summarize(
+    gdp_2005 = Value[PeriodCode == 2005],
+    gdp_2018 = Value[PeriodCode == 2018],
+    # calculate relative growth
+    gdp_growth = (gdp_2018 - gdp_2005) / gdp_2005 * 100) %>%
+  # add ISO2 codes for easier joining with other datasets
+  left_join(country_mapping, by = c("CountryName" = "country_name")) %>%
+  # select relevant columns
+  select(CountryName, iso2, gdp_2005, gdp_2018, gdp_growth)
+
+
+
