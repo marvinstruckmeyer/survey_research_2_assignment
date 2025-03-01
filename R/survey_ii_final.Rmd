@@ -1,0 +1,30 @@
+---
+title: "Survey II - Final"
+author: "Phong, Marvin, Isabel"
+date: "2025-03-01"
+output: html_document
+---
+
+# Cross-country Difference Analysis
+
+Objectives:
+
+-   Analyze the data to understand why support for transgender individuals obtaining official documents varies significantly between countries
+
+-   Individual-level indicators complemented with country-level factors (e.g., cultural norms, legal frameworks. historical context, economic variables, societal attitudes towards LGBTI+ rights)
+
+# Predictive Model
+
+Objectives:
+
+-   Develop a predictive model using ML techniques to forecast support levels based on observed trends
+
+-   Ensure model's accuracy and reliability, rigorous calibration, and validation.
+
+## Relevant Features
+
+## Modeling Method
+
+## Model Training
+
+## Model Performance Evaluation
