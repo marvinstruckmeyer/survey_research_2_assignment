@@ -610,15 +610,29 @@ ess_data_clean <- country_data_final %>%
     #iso3c
   )
 
-# Merge ESS data
+# merge ESS data
 country_level_df <- country_level_df %>%
   left_join(ess_data_clean, by = c("iso2" = "cntry"))
 
+country_level_df %>% View()
 
+# delete the first Greece row
+greece_rows <- which(country_level_df$country_name == "Greece")
 
+if (length(greece_rows) > 1) {
+  # remove the first instance of Greece
+  country_level_df <- country_level_df[-greece_rows[1], ]
+  
+  # verify the fix worked
+  greece_check <- country_level_df %>%
+    filter(country_name == "Greece")
+  print("Greece entries after removing the first instance:")
+  print(greece_check)
+}
 
-
-
+# save
+saveRDS(country_level_df, file = "country_level_df.rds")
+write.csv(country_level_df, "country_level_df.csv")
 
 
 
