@@ -20,6 +20,8 @@
 
 
 # load libraries ----------------------------------------------------------
+# devtools::install_github("vdeminstitute/vdemdata")
+
 library(tidyverse)
 library(dplyr)
 library(readr)
