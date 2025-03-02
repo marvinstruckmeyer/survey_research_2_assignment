@@ -5,6 +5,7 @@
 # 4. Happiness CHECK
 # 5. GDP per capita CHECK
 # 6. ESS round 9 ||
+# 7. Unemployment rate 
 # 7. Religious, age composition ||
 
 
@@ -28,6 +29,7 @@ library(readr)
 library(vdemdata)
 library(survey) 
 library(countrycode)
+library(rvest)
 
 
 # mapping -----------------------------------------------------------------
@@ -440,10 +442,65 @@ ggplot(country_data_final, aes(x = mean_religiosity, y = pct_lgbt_support, label
        y = "LGBT Support (%)") +
   theme_minimal()
 
-#  adjust the country codes to match those in the Eurobarometer dataset
+# adjust the country codes to match those in the Eurobarometer dataset
 
 
+# 7. Unemployment rate ----------------------------------------------------
+# https://en.wikipedia.org/wiki/List_of_European_Union_member_states_by_unemployment_rate
 
+# URL of the wiki
+url <- "https://en.wikipedia.org/wiki/List_of_European_Union_member_states_by_unemployment_rate"
+
+page <- read_html(url)
+tables <- html_table(page, fill = TRUE)
+
+eu_unemployment_table <- tables[[1]]
+
+colnames(eu_unemployment_table) <- gsub("\\[.*?\\]", "", colnames(eu_unemployment_table))
+
+# print the column names after removing footnotes
+print("Column names after removing footnotes:")
+print(colnames(eu_unemployment_table))
+
+# check the first column name to make sure we're using the exact string
+first_col_name <- colnames(eu_unemployment_table)[2]
+print(paste("First column name is:", first_col_name))
+
+# clean up the data by removing footnote references in the country names
+# using the exact column name
+eu_unemployment_table[[first_col_name]] <- 
+  gsub("\\[.*?\\]", "", eu_unemployment_table[[first_col_name]])
+
+# remove flag emoji and other special characters from country names
+eu_unemployment_table[[first_col_name]] <- 
+  gsub("^.*? ", "", eu_unemployment_table[[first_col_name]])
+
+# display a sample of the cleaned data
+print("Sample of cleaned data:")
+print(head(eu_unemployment_table))
+
+# check what the column names are for the rate columns
+rate_cols <- grep("rate", colnames(eu_unemployment_table), ignore.case = TRUE, value = TRUE)
+print(paste("Rate column names:", paste(rate_cols, collapse=", ")))
+
+# convert to numeric safely
+for (col in rate_cols) {
+  eu_unemployment_table[[col]] <- as.numeric(as.character(eu_unemployment_table[[col]]))
+}
+
+colnames(eu_unemployment_table) <- c("ID", "Country", "Unemployment", "Employment", "Year")
+
+# remove the footnote references from country names
+eu_unemployment_table$Country <- gsub(" \\[\\d+\\]", "", eu_unemployment_table$Country)
+
+# create a clean dataframe without the ID column
+clean_eu_data <- eu_unemployment_table %>%
+  select(Country, Unemployment, Employment, Year)
+
+# convert numeric columns to proper numeric format if they aren't already
+clean_eu_data$Unemployment <- as.numeric(as.character(clean_eu_data$Unemployment))
+clean_eu_data$Employment <- as.numeric(as.character(clean_eu_data$Employment))
+clean_eu_data$Year <- as.numeric(as.character(clean_eu_data$Year))
 
 
 
