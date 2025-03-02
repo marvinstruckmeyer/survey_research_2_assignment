@@ -1,13 +1,17 @@
 # Table of contents -------------------------------------------------------
 # 1. vdemdata CHECK
 # 2. Rainbowmap CHECK
-# 3. Marriage SOME WORK NEEDED
-# 4. Economist Democracy Scores for 2018 CHECK
-# 5. Happiness CHECK
-# 6. GDP per capita CHEDK
+# 3. Economist Democracy Scores for 2018 CHECK
+# 4. Happiness CHECK
+# 5. GDP per capita CHECK
+# 6. ESS round 9 ||
+# 7. Religious, age composition ||
 
 
-### further ideas:
+
+## further ideas:
+# which political parties governed in the years before (i.e., left, centre-right etc.)
+# Gini index
 # migrant acceptance scores
 # welfare state/ size of government relative to GDP
 # physical/ mental health issues; quality and equity of healthcare
@@ -32,11 +36,11 @@ country_mapping <- data.frame(
                    "Spain", "Sweden", "United Kingdom"),
   iso2 = c("AT", "BE", "BG", "HR", "CY", 
            "CZ", "DK", "EE", "FI", "FR", 
-           "DE", "GR", "HU", "IE", "IT", 
+           "DE", "GR", "HU", "IE", "IT", # GR = EL in the survey
            "LV", "LT", "LU", "MT", "NL", 
            "PL", "PT", "RO", "SK", "SI", 
-           "ES", "SE", "GB"),
-  country_code = 1:28,  # adjust these numeric codes based on your actual survey coding
+           "ES", "SE", "GB"), # GB = UK in the survey
+  country_code = 1:28,  
   stringsAsFactors = FALSE)
 
 
@@ -51,11 +55,14 @@ eu_countries <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus",
                   "Lithuania", "Luxembourg", "Malta", "Netherlands", "Poland", 
                   "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden")
 
-# filter for most recent data (2019 to match your survey) for EU countries
+# filter for most recent data (2019 to match survey data) for EU countries
 vdem_eu_2019 <- vdem_data %>%
   filter(country_name %in% eu_countries, year == 2019) %>%
   select(country_name, v2x_libdem, v2x_polyarchy, v2x_gender, 
          v2x_egaldem, v2x_liberal, v2xcs_ccsi, v2x_freexp)  # select relevant variables
+
+saveRDS(vdem_eu_2019, file = "vdem_eu_2019.rds")
+
 
 ## from the codebook: 
 # v2x_libdem: index of liberal democracy
@@ -65,6 +72,7 @@ vdem_eu_2019 <- vdem_data %>%
 # v2x_liberal: index of civil liberties
 # v2xcs_ccsi:  index of civil society participation
 # v2x_freexp: index of freedom of expression
+
 
 
 # 2. Rainbowmap --------------------------------------------------------------
@@ -234,32 +242,8 @@ rainbow_df <- df_compressed
 # save the data frame
 saveRDS(rainbow_df, file = "rainbow_df.rds")
 
-# 4. Marriage data -----------------------------------------------------------
-link <- "https://en.wikipedia.org/wiki/Recognition_of_same-sex_unions_in_Europe"
-html_website <- link |> read_html()
-all_tables <- html_website|> html_table()
-marriage_data <- all_tables[[4]]
-marriage_data <- marriage_data |> select(Status, Country)
 
-# cleaning the status column
-marriage_data$Status <- sub("\\s*\\(.*|\\s*-.*", "", marriage_data$Status)
-unique(marriage_data$Status)
-
-# cleaning the country column
-marriage_data <- marriage_data |> 
-  mutate(Country = str_replace_all(Country, c("\\*" = "", "†" = "", "\\[.*?\\]" = ""))) |> 
-  mutate(Country = trimws(Country))
-unique(marriage_data$Country)
-
-# getting rid of the total and subtotal rows
-marriage_data <- marriage_data |> 
-  filter(!Status %in% c("Total", "Subtotal"))
-
-# problem with this: some of the changes were made after 2019, so it's hard to
-# justify using this as an independent variable
-
-
-# 4. The Economist: Democracy scores 2018 ---------------------------------
+# 3. The Economist: Democracy scores 2018 ---------------------------------
 # https://enperspectiva.uy/wp-content/uploads/2019/01/Democracy_Index_2018.pdf
 democracy_scores <- data.frame(
   Country = c("Belgium", "Denmark", "Greece", "Spain", "Finland", "France", "Ireland", "Italy", "Luxembourg", "Netherlands", "Austria", "Portugal", "Sweden", "Germany", "United Kingdom", "Bulgaria", "Cyprus", "Czech Republic", "Estonia", "Hungary", "Latvia", "Lithuania", "Malta", "Poland", "Romania", "Slovakia", "Slovenia", "Croatia"),
@@ -274,16 +258,19 @@ democracy_scores <- data.frame(
   Civil_liberties = c(8.53, 9.12, 8.53, 8.82, 9.71, 8.53, 10.00, 8.24, 9.71, 9.12, 8.82, 9.12, 9.41, 9.41, 9.12, 7.94, 8.82, 8.53, 8.53, 7.06, 8.82, 9.12, 8.82, 7.65, 7.65, 7.94, 8.24, 7.06),
   Regime_type = c("Flawed democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Flawed democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Full democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Full democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy"))
 
+saveRDS(democracy_scores, file = "democracy_scores.rds")
 
-# 5. Happiness data 2018 ---------------------------------------------------------------------
+
+# 4. Happiness data 2018 ---------------------------------------------------------------------
 # https://s3.amazonaws.com/happiness-report/2018/WHR_web.pdf
 happiness_scores <- data.frame(
   Country = c("Finland", "Denmark", "Greece", "Spain", "France", "Ireland", "Italy", "Luxembourg", "Netherlands", "Austria", "Portugal", "Sweden", "Germany", "United Kingdom", "Bulgaria", "Cyprus", "Czech Republic", "Estonia", "Hungary", "Latvia", "Lithuania", "Malta", "Poland", "Romania", "Slovakia", "Slovenia", "Croatia"),
   ISO2 = c("FI", "DK", "GR", "ES", "FR", "IE", "IT", "LU", "NL", "AT", "PT", "SE", "DE", "GB", "BG", "CY", "CZ", "EE", "HU", "LV", "LT", "MT", "PL", "RO", "SK", "SI", "HR"),
   Happiness_Score = c(7.632, 7.555, 5.358, 6.310, 6.489, 6.977, 6.000, 6.910, 7.441, 7.139, 5.410, 7.314, 6.965, 6.814, 4.933, 5.762, 6.711, 5.739, 5.620, 5.933, 5.952, 6.627, 6.123, 5.945, 6.173, 5.948, 5.321))
 
+saveRDS(happiness_scores, file = "happiness_scores.rds")
 
-# 6. GDP per capita ---------------------------------------------------------------------
+# 5. GDP per capita ---------------------------------------------------------------------
 df_GDP <- read_csv("data/raw/data_20250228194704.csv")
 df_GDP <- df_GDP %>%
   select("CountryName", "PeriodCode", "Value") %>%
@@ -305,6 +292,20 @@ df_GDP <- df_GDP %>%
   left_join(country_mapping, by = c("CountryName" = "country_name")) %>%
   # select relevant columns
   select(CountryName, iso2, gdp_2005, gdp_2018, gdp_growth)
+
+saveRDS(df_GDP, file = "df_GDP.rds")
+
+
+# 6. ESS Round 9 ----------------------------------------------------------
+# https://ess.sikt.no/en/datafile/b2b0bf39-176b-4eca-8d26-3c05ea83d2cb
+ESS_df <- read_csv("data/raw/ESS9e03_2.csv")
+
+
+
+
+
+
+
 
 
 
