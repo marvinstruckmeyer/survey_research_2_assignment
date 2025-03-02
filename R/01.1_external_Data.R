@@ -442,6 +442,9 @@ ggplot(country_data_final, aes(x = mean_religiosity, y = pct_lgbt_support, label
        y = "LGBT Support (%)") +
   theme_minimal()
 
+saveRDS(country_data_final, file = "country_data_final.rds")
+
+
 # adjust the country codes to match those in the Eurobarometer dataset
 
 
@@ -464,6 +467,13 @@ eu_unemployment_table$Country <- gsub("\\[.*?\\]", "", eu_unemployment_table$Cou
 eu_unemployment_table$Unemployment <- as.character(eu_unemployment_table$Unemployment)
 eu_unemployment_table$Employment <- as.numeric(as.character(eu_unemployment_table$Employment))
 eu_unemployment_table$Year <- as.numeric(as.character(eu_unemployment_table$Year))
+
+saveRDS(eu_unemployment_table, file = "eu_unemployment_table.rds")
+
+
+# Merge the data ----------------------------------------------------------
+
+
 
 
 
