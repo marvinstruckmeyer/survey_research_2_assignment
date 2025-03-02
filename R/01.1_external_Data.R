@@ -26,6 +26,8 @@ library(tidyverse)
 library(dplyr)
 library(readr)
 library(vdemdata)
+library(survey) 
+library(countrycode)
 
 
 # mapping -----------------------------------------------------------------
@@ -300,7 +302,145 @@ saveRDS(df_GDP, file = "df_GDP.rds")
 
 # 6. ESS Round 9 ----------------------------------------------------------
 # https://ess.sikt.no/en/datafile/b2b0bf39-176b-4eca-8d26-3c05ea83d2cb
-ESS_df <- read_csv("data/raw/ESS9e03_2.csv")
+ess_data <- read_csv("data/raw/ESS9e03_2.csv")
+
+# select interesting variables, country and weight variables
+ess_selected <- ess_data %>%
+  select(
+    # identifiers and weights
+    cntry,          # country code
+    pspwght,        # post-stratification weight
+    dweight,        # design weight
+    
+    # key variables of interest
+    freehms,        # gays and lesbians free to live life as they wish
+    lrscale,        # left-right political scale
+    rlgdgr,         # how religious are you
+    ipeqopt,        # important that people are treated equally
+    atchctr,        # attachment to country
+    eduyrs,         # years of education
+    agea)            # age of respondent
+
+# function to recode ESS special values (negative values are typically missing values)
+recode_ess_missing <- function(x) {
+  ifelse(x < 0, NA, x)
+}
+
+# clean the data
+ess_clean <- ess_selected %>%
+  # recode special values to NA
+  mutate(across(c(freehms, lrscale, rlgdgr, ipeqopt, atchctr, eduyrs, agea), 
+                recode_ess_missing)) %>%
+  # create derived variables if needed
+  mutate(
+    # recode freehms to 0-1 scale (originally 1-5 where 1 = agree strongly)
+    freehms_support = case_when(
+      freehms %in% c(1, 2) ~ 1,  # agree and strongly agree
+      freehms %in% c(3, 4, 5) ~ 0,  # neutral, disagree, strongly disagree
+      TRUE ~ NA_real_),
+    
+    # create age groups
+    age_group = case_when(
+      agea < 35 ~ "18-34",
+      agea < 55 ~ "35-54",
+      TRUE ~ "55+"
+    ),
+    
+    # standardise left-right scale to 0-1
+    lrscale_std = (lrscale - 1) / 9,  # Original scale is 1-10
+    
+    # create high education indicator (above country median)
+    high_educ = NA  # will fill this in after calculating country medians
+  )
+
+# calculate country median education for relative education measure
+country_medians <- ess_clean %>%
+  group_by(cntry) %>%
+  summarize(median_educ = median(eduyrs, na.rm = TRUE))
+
+# join back to main data and create high education indicator
+ess_clean <- ess_clean %>%
+  left_join(country_medians, by = "cntry") %>%
+  mutate(high_educ = ifelse(eduyrs > median_educ, 1, 0))
+
+# calculate weighted means by country
+country_aggregates <- ess_clean %>%
+  # group by country
+  group_by(cntry) %>%
+  # calculate weighted statistics
+  summarize(
+    # sample size
+    n_respondents = n(),
+    n_valid = sum(!is.na(freehms)),
+    
+    # weighted means
+    pct_lgbt_support = weighted.mean(freehms_support, w = pspwght, na.rm = TRUE) * 100,
+    mean_religiosity = weighted.mean(rlgdgr, w = pspwght, na.rm = TRUE),
+    mean_left_right = weighted.mean(lrscale_std, w = pspwght, na.rm = TRUE),
+    mean_equal_values = weighted.mean(ipeqopt, w = pspwght, na.rm = TRUE),
+    mean_country_attach = weighted.mean(atchctr, w = pspwght, na.rm = TRUE),
+    mean_eduyrs = weighted.mean(eduyrs, w = pspwght, na.rm = TRUE),
+    mean_age = weighted.mean(agea, w = pspwght, na.rm = TRUE),
+    
+    # weighted proportions for categorical variables
+    pct_young = weighted.mean(age_group == "18-34", w = pspwght, na.rm = TRUE) * 100,
+    pct_high_educ = weighted.mean(high_educ, w = pspwght, na.rm = TRUE) * 100,
+    
+    # standard errors (for confidence intervals)
+    se_lgbt_support = sd(freehms_support, na.rm = TRUE) / sqrt(sum(!is.na(freehms_support))),
+    
+    # missing data proportions
+    pct_missing_lgbt = mean(is.na(freehms)) * 100)
+
+# calculate cross-variable country indicators
+country_indicators <- ess_clean %>%
+  group_by(cntry) %>%
+  summarize(
+    # correlation between age and LGBT support within country
+    age_lgbt_corr = cor(agea, freehms_support, use = "pairwise.complete.obs", method = "spearman"),
+    
+    # correlation between religiosity and LGBT support
+    relig_lgbt_corr = cor(rlgdgr, freehms_support, use = "pairwise.complete.obs", method = "spearman"),
+    
+    # inequality in LGBT support (standard deviation)
+    lgbt_support_inequality = sd(freehms_support, na.rm = TRUE),
+    
+    # education gradient in LGBT support (difference between high and low education)
+    educ_gradient = weighted.mean(freehms_support[high_educ == 1], w = pspwght[high_educ == 1], na.rm = TRUE) - 
+      weighted.mean(freehms_support[high_educ == 0], w = pspwght[high_educ == 0], na.rm = TRUE))
+
+# join the aggregates and indicators
+country_data_final <- country_aggregates %>%
+  left_join(country_indicators, by = "cntry") %>%
+  # create ISO country codes for easier merging with other datasets
+  mutate(
+    iso2c = countrycode(cntry, "iso2c", "iso2c"),
+    iso3c = countrycode(cntry, "iso2c", "iso3c"))
+
+# plot LGBT support by country
+ggplot(country_data_final, aes(x = reorder(cntry, pct_lgbt_support), y = pct_lgbt_support)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_errorbar(aes(ymin = pct_lgbt_support - 1.96*se_lgbt_support, 
+                    ymax = pct_lgbt_support + 1.96*se_lgbt_support), 
+                width = 0.2) +
+  labs(title = "Support for LGBT Rights by Country",
+       subtitle = "Percent agreeing gays and lesbians should be free to live as they wish",
+       x = "Country",
+       y = "Support (%)") +
+  theme_minimal() +
+  coord_flip()
+
+# examine relationship between religiosity and LGBT support
+ggplot(country_data_final, aes(x = mean_religiosity, y = pct_lgbt_support, label = cntry)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_text(hjust = -0.3, vjust = 0.3) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Religiosity vs. LGBT Support by Country",
+       x = "Mean Religiosity Score",
+       y = "LGBT Support (%)") +
+  theme_minimal()
+
+#  adjust the country codes to match those in the Eurobarometer dataset
 
 
 
