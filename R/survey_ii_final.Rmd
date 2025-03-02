@@ -21,7 +21,7 @@ Objectives:
 
 -   Individual-level indicators complemented with country-level factors (e.g., cultural norms, legal frameworks. historical context, economic variables, societal attitudes towards LGBTI+ rights)
 
-## Context
+## Cultural Norms Context
 
 ```{r}
 rb_cat <- read_csv(file = "../data/2024-rainbow-map-data.csv", n_max = 2) %>% 
@@ -47,24 +47,15 @@ rb_data <- read_csv(file = "../data/2024-rainbow-map-data.csv", skip = 1) %>%
 
 ```{r}
 happiness <- read_rds("../happiness_scores.rds")
-```
 
-```{r}
-summary(happiness)
-sd(happiness$Happiness_Score)
-```
-
-The World Happiness reported for 2015-2017, there was a 4-point gap between the top-ranked and bottom-ranked countries. For European countries, this range is lower, down to roughly 2.6 points between the lowest and highest score.
-
-Most countries' scores are within 5.8 and 6.9 and have a standard deviation of 0.744. This indicates a moderate difference in happiness between the countries.
-
-```{r}
 ggplot(happiness, aes(x=reorder(Country, Happiness_Score, decreasing = TRUE), y=Happiness_Score)) +
   geom_col() +
   xlab("Country") +
-  labs(
-    title = "Happiness Score Ranking Among European Countries") +
   theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+
 ```
 
 # Predictive Model
