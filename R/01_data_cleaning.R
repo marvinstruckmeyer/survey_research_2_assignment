@@ -8,78 +8,78 @@ dim(data)
 head(data, 3)
 
 # data cleaning -----------------------------------------------------------
-# Function to visualize missing data patterns
+# function to visualize missing data patterns
 plot_missing_patterns <- function(data) {
-  # Calculate percentage missing for each variable
+  # calculate percentage missing for each variable
   missing_pct <- colSums(is.na(data))/nrow(data) * 100
   
-  # Keep only variables with missing values
+  # keep only variables with missing values
   missing_pct <- missing_pct[missing_pct > 0]
   
-  # Sort in descending order
+  # sort in descending order
   missing_pct <- sort(missing_pct, decreasing = TRUE)
   
-  # Create barplot
-  par(mar = c(10, 4, 4, 2)) # Increase bottom margin for labels
+  # create barplot
+  par(mar = c(10, 4, 4, 2)) # increase bottom margin for labels
   barplot(missing_pct,
           main = "Percentage of Missing Values by Variable",
           ylab = "% Missing",
           las = 2,  # Rotate labels
           cex.names = 0.7)  # Reduce label size
   
-  # Print numerical summary
+  # print numerical summary
   missing_summary <- data.frame(
     Variable = names(missing_pct),
     Percent_Missing = round(missing_pct, 2)
   )
   print(missing_summary)
   
-  # Return invisibly for potential further use
+  # return invisibly for potential further use
   invisible(missing_summary)
 }
 
-# Function to analyze patterns of missingness by row
+# function to analyze patterns of missingness by row
 analyze_missing_by_row <- function(data) {
-  # Count missing values per row
+  # count missing values per row
   missing_by_row <- rowSums(is.na(data))
   
-  # Create summary statistics
+  # create summary statistics
   row_summary <- data.frame(
     Total_Missing = missing_by_row,
     Percent_Missing = (missing_by_row/ncol(data)) * 100
   )
   
-  # Print summary statistics
+  # print summary statistics
   cat("\nMissing values per row summary:\n")
   print(summary(row_summary))
   
-  # Create histogram of missing values per row
+  # create histogram of missing values per row
   hist(missing_by_row,
        main = "Distribution of Missing Values per Row",
        xlab = "Number of Missing Values",
        breaks = 30)
   
-  # Return summary for potential further use
+  # return summary for potential further use
   invisible(row_summary)
 }
 
-# Run the analyses
+# run the analyses
 cat("Analyzing missing data patterns...\n")
 
-# Plot missing values by variable
+# plot missing values by variable
 cat("\nPlotting missing values by variable:\n")
 plot_missing_patterns(data)
 
-# Analyze patterns by row
+# analyse patterns by row
 cat("\nAnalyzing patterns by row:\n")
 analyze_missing_by_row(data)
 
-# Additional numerical summaries
+# additional numerical summaries
 cat("\nCorrelation of missingness:\n")
-# Create binary missing data matrix
+# create binary missing data matrix
 missing_matrix <- is.na(data) * 1
 
-# Find variables with high correlation in missingness
+# find variables with high correlation in missingness
 missing_cor <- cor(missing_matrix)
 high_cor <- which(abs(missing_cor) > 0.7 & missing_cor != 1, arr.ind = TRUE)
 
