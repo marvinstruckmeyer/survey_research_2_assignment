@@ -15,31 +15,37 @@ library(xml2)
 # Missing Data Overview
 
 ```{r}
-codebook <- read_html("../data/raw/ESS9e03_2 codebook.html")
-
-attr_list <- xml_find_all(codebook,".//h3") %>% 
-  xml_contents() %>% 
-  as_list() %>% 
-  unlist() %>% 
-  .[-1:-2]
-
-attr_desc <- xml_find_all(codebook,".//h3/following-sibling::*[1]") %>% 
-  as_list() %>% 
-  unlist() %>% 
-  .[-1:-2]
-
-attr_df <- cbind(attr_list, attr_desc) %>% 
-  as_data_frame()
+# codebook <- read_html("../data/raw/ESS9e03_2 codebook.html")
+# 
+# attr_list <- xml_find_all(codebook,".//h3") %>% 
+#   xml_contents() %>% 
+#   as_list() %>% 
+#   unlist() %>% 
+#   .[-1:-2]
+# 
+# attr_desc <- xml_find_all(codebook,".//h3/following-sibling::*[1]") %>% 
+#   as_list() %>% 
+#   unlist() %>% 
+#   .[-1:-2]
+# 
+# attr_df <- cbind(attr_list, attr_desc) %>% 
+#   as_data_frame()
 ```
 
 ```{r}
 data <- read_dta("../data/raw/ZA7575.dta")
 
+data_labels <- sapply(data, function(x) attr(x, "label")) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "attribute") %>% 
+  rename("description" = 2)
+
 colSums(is.na(data)) %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "attribute") %>% 
   rename("na_count" = 2) %>% 
-  arrange(desc(na_count))
+  arrange(desc(na_count)) %>% 
+  left_join(data_labels, join_by("attribute"))
 ```
 
 Overall percentage of missing values
