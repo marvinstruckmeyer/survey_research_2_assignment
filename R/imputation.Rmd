@@ -1,0 +1,44 @@
+---
+title: "Imputation Analysis"
+author: "Phong, Marvin, Isabel"
+date: "2025-03-04"
+output: html_document
+---
+
+```{r}
+library(haven)
+library(tidyverse)
+library(ggplot2)
+```
+
+# Missing Data Overview
+
+```{r}
+data <- read_dta("../data/raw/ZA7575.dta")
+
+colSums(is.na(data)) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "attribute") %>% 
+  rename("na_count" = 2) %>% 
+  arrange(desc(na_count))
+```
+
+Overall percentage of missing values
+
+Missing values per variable
+
+Missing Data Mechanism
+
+Missingness heatmap
+
+Patterns of missing data
+
+# Imputation Strategy
+
+Baseline
+
+Multiple Imputation with ML
+
+Imputed data analysis
+
+# Sensitivity Analysis
