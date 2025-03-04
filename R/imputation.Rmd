@@ -9,9 +9,28 @@ output: html_document
 library(haven)
 library(tidyverse)
 library(ggplot2)
+library(xml2)
 ```
 
 # Missing Data Overview
+
+```{r}
+codebook <- read_html("../data/raw/ESS9e03_2 codebook.html")
+
+attr_list <- xml_find_all(codebook,".//h3") %>% 
+  xml_contents() %>% 
+  as_list() %>% 
+  unlist() %>% 
+  .[-1:-2]
+
+attr_desc <- xml_find_all(codebook,".//h3/following-sibling::*[1]") %>% 
+  as_list() %>% 
+  unlist() %>% 
+  .[-1:-2]
+
+attr_df <- cbind(attr_list, attr_desc) %>% 
+  as_data_frame()
+```
 
 ```{r}
 data <- read_dta("../data/raw/ZA7575.dta")
