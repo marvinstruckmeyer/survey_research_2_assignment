@@ -10,6 +10,7 @@ library(haven)
 library(tidyverse)
 library(ggplot2)
 library(xml2)
+library(stringr)
 ```
 
 # Missing Data Overview
@@ -40,30 +41,64 @@ data_labels <- sapply(data, function(x) attr(x, "label")) %>%
   rownames_to_column(var = "attribute") %>% 
   rename("description" = 2)
 
-colSums(is.na(data)) %>% 
+missing_data <- colSums(is.na(data)) %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "attribute") %>% 
   rename("na_count" = 2) %>% 
+  filter(na_count > 0) %>% 
   arrange(desc(na_count)) %>% 
-  left_join(data_labels, join_by("attribute"))
+  left_join(data_labels, join_by("attribute")) %>% 
+  mutate(missing_pcg = na_count/nrow(data),
+         question = str_extract(attribute, "\\w\\w?\\d{1,2}")) 
+
+missing_data
+
+summary(missing_data)
 ```
 
 Overall percentage of missing values
 
+```{r}
+sum(missing_data$missing_pcg) / ncol(data)
+```
+
 Missing values per variable
+
+```{r}
+missing_data %>% 
+  group_by(question) %>% 
+  summarise(avg_missing_pcg = mean(missing_pcg))  %>% 
+  arrange(desc(avg_missing_pcg)) %>% view()
+```
+
+-   p6 - Size of locality: has the highest missing data on average (96%) almost most are not answering this question. This might not be highly relevant to the analysis
+
+-   p13 - Language of interview: has the second highest amount of missing data (94%). This question may be helpful for the analysis.
+
+-   p7 - Region: high amount of missing data (94%). We might be able to fill in this question from other questions such as postal code.
+
+-   qc3 - Thinking about the most recent time when you felt discriminated against, under what circumstances did it take place?: high amount of missing data (84%) and highly important for the purpose of the analysis
+
+-   d40 - Could you tell me how many people aged 15 years or more live in your household, yourself included?: high amount of missing data (78%) might not be very relevant for analysis
+
+-   qa3 - Why do you think you are not benefitting from international trade? (M): moderate amount of missing data (67%). The question might not be relevant to the analysis.
+
+-   qa15 - From which of the following countries outside of the EU have you bought goods or services? moderate amount of missing data (62%) but might not be relevant to the analysis
+
+-   d15 (specifically d15 b) - Did you do any paid work in the past? What was your last occupation?: moderate missing data (52%) but could be relevant for the analysis
+
+-   qa2 - Why do you think you are benefitting from international trade? (M): low to moderate missing data (37%). The question is also highly correlated to qa3.
+
+-   qb8 - Did the EU energy label have an influence on the choice of your purchase of electric appliances (fridges, washing machines, dish washers, televisions…)?: low amount of missing data (8%)
+
+-   qa5 (specifically b) - Following up qa5a Which of the following statements best describes your opinion about globalisation? Firstly?: low amount of missing data (7%)
+
+-   qa18 (specifically b) - Following up qa18a Where do you get most of your information on globalisation and international trade? Firstly: low amount of missing data (5%)
+
+-   qa4 (specifically b) - Following up qa4a In your opinion, what should be the main priorities of the European Union's trade policy for the years to come? Firstly? (M): low amount of missing data (3%)
 
 Missing Data Mechanism
 
-Missingness heatmap
-
-Patterns of missing data
-
-# Imputation Strategy
-
-Baseline
-
-Multiple Imputation with ML
-
-Imputed data analysis
+# Imputation
 
 # Sensitivity Analysis
