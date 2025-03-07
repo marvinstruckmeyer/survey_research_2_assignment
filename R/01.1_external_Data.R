@@ -4,9 +4,9 @@
 # 3. Economist Democracy Scores for 2018 CHECK
 # 4. Happiness CHECK
 # 5. GDP per capita CHECK
-# 6. ESS round 9 ||
-# 7. Unemployment rate 
-# 8. Gender equality index
+# 6. ESS round 9 CHECK
+# 7. Unemployment rate CHECK
+# 8. Gender equality index CHECK  
 
 
 ## further ideas:
@@ -518,6 +518,7 @@ write.csv(eu_unemployment_table, "eu_unemployment_table.csv", row.names = FALSE)
 
 
 # 8. Gender equality ------------------------------------------------------
+# https://eige.europa.eu/gender-statistics/dgs/indicator/index__index_scores/datatable?time=2017&col=domain&row=geo
 gender_eq_index <- read_xlsx("data/raw/index__index_scores.xlsx", range = "A16:V44")
 
 gender_eq_index <- gender_eq_index %>%
@@ -733,6 +734,10 @@ country_level_df <- country_level_df %>%
       country_name %in% c("Poland", "Czech Republic", "Slovakia", "Hungary", "Slovenia", 
                           "Croatia", "Romania", "Bulgaria") ~           "Eastern Europe",
         TRUE ~ NA_character_))
+
+# delete the "Country.x", "Country.y" and "CountryName" columns
+country_level_df <- country_level_df %>%
+  select(-c("Country.x", "Country.y", "CountryName"))
 
 # save as RDS and csv
 saveRDS(country_level_df, file = "country_level_df.rds")
