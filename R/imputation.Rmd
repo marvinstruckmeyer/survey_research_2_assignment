@@ -120,7 +120,23 @@ cat <- df %>%
   colnames()
 
 df <- df %>% 
-  select(c(var,cat))
+  select(all_of(c(var,cat)))
+```
+
+```{r warning = FALSE}
+m <- 5
+
+df_pmm <- complete(mice(df, m = m, method='pmm'), action=m)
+df_rf <- complete(mice(df, m = m, method='rf'), action=m)
+df_cart <- complete(mice(df, m = m, method='cart'), action=m)
+df_logReg <- complete(mice(df, m = m, method='logreg'), action=m)
+```
+
+```{r}
+write_rds(df_pmm, "df_pmm.rds")
+write_rds(df_rf, "df_rf.rds")
+write_rds(df_cart, "df_cart.rds")
+write_rds(df_logReg, "df_logReg.rds")
 ```
 
 ## Imputed data analysis
