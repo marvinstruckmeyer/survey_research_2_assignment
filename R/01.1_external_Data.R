@@ -6,6 +6,7 @@
 # 5. GDP per capita CHECK
 # 6. ESS round 9 ||
 # 7. Unemployment rate 
+# 8. Gender equality index
 
 
 ## further ideas:
@@ -516,6 +517,14 @@ saveRDS(eu_unemployment_table, file = "eu_unemployment_table.rds")
 write.csv(eu_unemployment_table, "eu_unemployment_table.csv", row.names = FALSE)
 
 
+# 8. Gender equality ------------------------------------------------------
+gender_eq_index <- read_xlsx("data/raw/index__index_scores.xlsx", range = "A16:V44")
+
+gender_eq_index <- gender_eq_index %>%
+  select(country_name = "Geographic region\\(Sub-) Domain Scores", 
+         gender_equality_index = "Overall Gender Equality Index") %>%
+  mutate(country_name = ifelse(country_name == "Czechia", "Czech Republic", country_name))
+
 # Merge the data ----------------------------------------------------------
 # create a base dataframe with country identifying variables
 country_level_df <- country_mapping
@@ -630,7 +639,102 @@ if (length(greece_rows) > 1) {
   print(greece_check)
 }
 
-# save
+# add the gender equality index
+country_level_df <- country_level_df %>%
+  left_join(gender_eq_index, by = "country_name")
+
+## scaling: necessary for the regression analysis later on because the variables have vastly different scales
+country_level_df %>% 
+  select(where(is.numeric)) %>% 
+  summary()
+
+# we'll apply different scaling methods based on the type of variable:
+# 1. z-score standardization: for continuous variables to make them comparable (mean=0, sd=1)
+# 2. min-max normalization: for variables with natural bounds (e.g., 0-100 scores)
+# 3. log transformation: for heavily skewed variables like GDP
+
+# custom function to standardize (z-score)
+standardize <- function(x) {
+  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+}
+
+# custom function to min-max normalize
+normalize <- function(x) {
+  (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+# z-scores for the democracy scores
+country_level_df <- country_level_df %>%
+  mutate(
+    z_v2x_libdem = standardize(v2x_libdem),
+    z_v2x_polyarchy = standardize(v2x_polyarchy),
+    z_v2x_gender = standardize(v2x_gender),
+    z_v2x_egaldem = standardize(v2x_egaldem),
+    z_v2x_liberal = standardize(v2x_liberal),
+    z_v2xcs_ccsi = standardize(v2xcs_ccsi),
+    z_v2x_freexp = standardize(v2x_freexp))
+
+# GDP and unemployment rate
+country_level_df <- country_level_df %>%
+  mutate(
+    z_gdp_2018 = standardize(gdp_2018),
+    log_gdp_2018 = log(gdp_2018),
+    z_gdp_growth = standardize(gdp_growth),
+    z_unemployment = standardize(Unemployment))
+
+# rainbow variables 
+country_level_df <- country_level_df %>%
+  mutate(
+    z_rainbow_score = standardize(rainbow_score_2019),
+    norm_rainbow_score = normalize(rainbow_score_2019),
+    z_lgbt_support = standardize(lgbt_support_percent),
+    norm_lgbt_support = normalize(lgbt_support_percent))
+
+# happiness scores
+country_level_df <- country_level_df %>%
+  mutate(
+    z_happiness = standardize(Happiness_Score),
+    z_gender_equality = standardize(gender_equality_index),
+    norm_gender_equality = normalize(gender_equality_index))
+
+# religion, politics, education and age
+country_level_df <- country_level_df %>%
+  mutate(
+    z_religiosity = standardize(mean_religiosity),
+    z_left_right = standardize(mean_left_right),
+    z_equal_values = standardize(mean_equal_values),
+    z_country_attach = standardize(mean_country_attach),
+    z_eduyrs = standardize(mean_eduyrs),
+    z_age = standardize(mean_age))
+
+# create two composite scores and regional classification
+country_level_df <- country_level_df %>%
+  mutate(
+    composite_equality = rowMeans(
+      cbind(z_gender_equality, z_rainbow_score, z_v2x_gender),
+      na.rm = TRUE))
+
+country_level_df <- country_level_df %>%
+  mutate(
+    composite_democracy = rowMeans(
+      cbind(z_v2x_libdem, z_v2x_polyarchy, z_v2x_libdem, z_v2x_freexp), 
+      na.rm = TRUE))
+
+country_level_df <- country_level_df %>%
+  mutate(
+    region = case_when(
+      country_name %in% c("Denmark", "Finland", "Sweden", "Estonia", "Latvia", "Lithuania") ~ 
+        "Northern Europe",
+      country_name %in% c("Belgium", "Netherlands", "Luxembourg", "Germany", "France", 
+                          "Austria", "United Kingdom", "Ireland") ~ 
+          "Western Europe",
+       country_name %in% c("Portugal", "Spain", "Italy", "Malta", "Greece", "Cyprus") ~ 
+        "Southern Europe",
+      country_name %in% c("Poland", "Czech Republic", "Slovakia", "Hungary", "Slovenia", 
+                          "Croatia", "Romania", "Bulgaria") ~           "Eastern Europe",
+        TRUE ~ NA_character_))
+
+# save as RDS and csv
 saveRDS(country_level_df, file = "country_level_df.rds")
 write.csv(country_level_df, "country_level_df.csv")
 
