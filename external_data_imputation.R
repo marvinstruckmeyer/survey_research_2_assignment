@@ -1,5 +1,7 @@
 ## why still z-scores for mean religosity, left-right  etc. 
 
+country_level_df <- readRDS("country_level_df.rds")
+
 # first, let's check which variables have missing values
 missing_summary <- colSums(is.na(country_level_df))
 missing_summary <- missing_summary[missing_summary > 0]
@@ -171,4 +173,7 @@ tryCatch({
   return(country_df_imputed)
 })
 
-# write.csv(country_df_imputed, "country_df_imputed.csv", row.names = FALSE)
+# save
+saveRDS(country_df_imputed, file = "country_df_imputed.rds") 
+write.csv(country_df_imputed, "country_df_imputed.csv", row.names = FALSE)
+

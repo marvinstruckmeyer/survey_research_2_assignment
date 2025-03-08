@@ -5,7 +5,7 @@ library(readr)
 
 # load the data
 df_rf <- readRDS("R/df_rf.rds") # the imputed dataset
-country_level_df <- readRDS("country_level_df.rds") # external dataset
+country_df_imputed <- readRDS(country_df_imputed, file = "country_df_imputed.rds") # external dataset
 
 # create a lookup table for country codes to ISO codes
 country_iso_lookup <- data.frame(
@@ -169,7 +169,7 @@ calculate_country_aggregates <- function(df) {
       # 1=Yes, 2=No
       pct_support_trans_id = mean(qc19 == 1, na.rm = TRUE) * 100,
       
-      # Calculate sample size for each country
+      # calculate sample size for each country
       sample_size = n()
     )
   
@@ -179,26 +179,47 @@ calculate_country_aggregates <- function(df) {
 # apply the function to the dataset
 country_aggregates <- calculate_country_aggregates(df_rf)
 
-# Add ISO codes to the country aggregates if not already present
+# add ISO codes to the country aggregates if not already present
 if (!"first_iso" %in% names(country_aggregates) || all(is.na(country_aggregates$first_iso))) {
   country_aggregates <- country_aggregates %>%
     left_join(country_iso_lookup, by = "country")
 }
 
-# merge with existing country_level_df
+# merge with existing imputed country_df_imputed
 # using both country_code and iso2 for more reliable merging
-country_data_combined <- country_level_df %>%
+country_data_combined <- country_df_imputed %>%
   left_join(country_aggregates, by = c("country_code" = "country"))
 
 # double-check ISO code matching
 country_data_combined <- country_data_combined %>%
   mutate(
     iso_match_check = ifelse(iso2.x == iso2.y, "Match", "Mismatch"),
-    # Keep the original ISO code from country_level_df if there's a mismatch
+    # keep the original ISO code from country_level_df if there's a mismatch
     iso2 = ifelse(is.na(iso2.y) | iso2.x == iso2.y, iso2.x, paste0(iso2.x, "/", iso2.y))) %>%
-  select(-iso2.x, -iso2.y, -iso_match_check) # Remove temporary columns
+  select(-iso2.x, -iso2.y, -iso_match_check) # remove temporary columns
+
+# delete a few variables
+country_data_combined <- country_data_combined %>%
+  select(-c("country_name.y", "iso2"))
 
 # save
 saveRDS(country_data_combined, file = "country_data_combined.rds")
 write_csv(country_data_combined, "country_data_combined.csv")
+
+# merge with existing survey data
+# left-join on the country variable as the common key
+df_rf_enriched <- df_rf %>%
+  left_join(country_data_combined, by = c("country" = "country_code"))
+
+# Verify the join worked correctly
+glimpse(df_rf_enriched)
+# Check a few rows to make sure the country-level variables were properly added
+head(df_rf_enriched %>% select(country, isocntry, mean_life_satisfaction, pct_support_trans_id))
+
+# Save the enriched dataset
+saveRDS(df_rf_enriched, file = "df_rf_enriched.rds")
+write_csv(df_rf_enriched, "df_rf_enriched.csv")
+
+
+
 
