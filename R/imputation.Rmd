@@ -1,0 +1,142 @@
+---
+title: "Imputation Analysis"
+author: "Phong, Marvin, Isabel"
+date: "2025-03-04"
+output: html_document
+---
+
+```{r}
+library(haven)
+library(tidyverse)
+library(ggplot2)
+library(xml2)
+library(stringr)
+library(mice)
+```
+
+# Missing Data Overview
+
+```{r}
+# codebook <- read_html("../data/raw/ESS9e03_2 codebook.html")
+# 
+# attr_list <- xml_find_all(codebook,".//h3") %>% 
+#   xml_contents() %>% 
+#   as_list() %>% 
+#   unlist() %>% 
+#   .[-1:-2]
+# 
+# attr_desc <- xml_find_all(codebook,".//h3/following-sibling::*[1]") %>% 
+#   as_list() %>% 
+#   unlist() %>% 
+#   .[-1:-2]
+# 
+# attr_df <- cbind(attr_list, attr_desc) %>% 
+#   as_data_frame()
+```
+
+```{r}
+data <- read_dta("../data/raw/ZA7575.dta")
+
+data_labels <- sapply(data, function(x) attr(x, "label")) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "attribute") %>% 
+  rename("description" = 2)
+
+missing_data <- colSums(is.na(data)) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "attribute") %>% 
+  rename("na_count" = 2) %>% 
+  filter(na_count > 0) %>% 
+  arrange(desc(na_count)) %>% 
+  left_join(data_labels, join_by("attribute")) %>% 
+  mutate(missing_pcg = na_count/nrow(data),
+         question = str_extract(attribute, "\\w\\w?\\d{1,2}")) 
+
+missing_data
+
+summary(missing_data)
+```
+
+Overall percentage of missing values
+
+```{r}
+sum(missing_data$missing_pcg) / ncol(data)
+```
+
+Missing values per variable
+
+```{r}
+missing_data %>% 
+  group_by(question) %>% 
+  summarise(avg_missing_pcg = mean(missing_pcg))  %>% 
+  arrange(desc(avg_missing_pcg))
+```
+
+-   p6 - Size of locality: has the highest missing data on average (96%) almost most are not answering this question. This might not be highly relevant to the analysis
+
+-   p13 - Language of interview: has the second highest amount of missing data (94%). This question may be helpful for the analysis.
+
+-   p7 - Region: high amount of missing data (94%). We might be able to fill in this question from other questions such as postal code.
+
+-   qc3 - Thinking about the most recent time when you felt discriminated against, under what circumstances did it take place?: high amount of missing data (84%) and highly important for the purpose of the analysis
+
+-   d40 - Could you tell me how many people aged 15 years or more live in your household, yourself included?: high amount of missing data (78%) might not be very relevant for analysis
+
+-   qa3 - Why do you think you are not benefitting from international trade? (M): moderate amount of missing data (67%). The question might not be relevant to the analysis.
+
+-   qa15 - From which of the following countries outside of the EU have you bought goods or services? moderate amount of missing data (62%) but might not be relevant to the analysis
+
+-   d15 (specifically d15 b) - Did you do any paid work in the past? What was your last occupation?: moderate missing data (52%) but could be relevant for the analysis
+
+-   qa2 - Why do you think you are benefitting from international trade? (M): low to moderate missing data (37%). The question is also highly correlated to qa3.
+
+-   qb8 - Did the EU energy label have an influence on the choice of your purchase of electric appliances (fridges, washing machines, dish washers, televisions…)?: low amount of missing data (8%)
+
+-   qa5 (specifically b) - Following up qa5a Which of the following statements best describes your opinion about globalisation? Firstly?: low amount of missing data (7%)
+
+-   qa18 (specifically b) - Following up qa18a Where do you get most of your information on globalisation and international trade? Firstly: low amount of missing data (5%)
+
+-   qa4 (specifically b) - Following up qa4a In your opinion, what should be the main priorities of the European Union's trade policy for the years to come? Firstly? (M): low amount of missing data (3%)
+
+Missing Data Mechanism
+
+# Imputation
+
+## Multiple Imputation with ML
+
+```{r}
+df <- data %>% 
+  select(!(starts_with("p6")|starts_with("p13")|starts_with("p7")|starts_with("d40")|starts_with("qa3")|starts_with("qa2")))
+
+var <- sapply(df, var) %>% 
+  as.list() %>% 
+  .[. != 0 | is.na(.)] %>% 
+  names()
+
+df <- df %>% 
+  select(all_of(var)) %>% 
+  select(!c("doi", "version", "caseid", "uniqid", "serialid")) %>% 
+  mutate(across(cat, haven::as_factor)) %>% 
+  sjlabelled::remove_all_labels()
+```
+
+```{r}
+df_rf <- complete(mice(df, m = 3, method='rf', maxit = 3, seed = 8532), action=3)
+```
+
+```{r}
+write_rds(df_rf, "df_rf.rds")
+```
+
+## Imputed data analysis
+
+```{r}
+imputed_cols <- df %>% 
+  select(any_of(c(unique(missing_data$attribute))))
+```
+
+## KS Test
+
+## Chi-Square Test
+
+# Sensitivity Analysis
