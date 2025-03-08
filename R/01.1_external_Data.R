@@ -311,10 +311,21 @@ greece_gdp <- data.frame(
   iso2 = "GR",
   gdp_2005 = 22054,  # GDP per capita in 2005
   gdp_2018 = 19873,  # GDP per capita in 2018
-  gdp_growth = ((19873 - 22054) / 22054) * 100)  # Calculate percent change
+  gdp_growth = ((19873 - 22054) / 22054) * 100)  # calculate percent change
+
+# add Czech Republic GDP per capita manually
+czech_gdp <- data.frame(
+  CountryName = "Czech Republic",
+  iso2 = "CZ",
+  gdp_2005 = 13442,  # GDP per capita in 2005
+  gdp_2018 = 23705,  # GDP per capita in 2018
+  gdp_growth = ((23705 - 13442) / 13442) * 100)  # calculate percent change
 
 # append Greece to the GDP dataset
 df_GDP <- rbind(df_GDP, greece_gdp)
+
+# append Czech Republic to the dataset
+df_GDP <- rbind(df_GDP, czech_gdp)
 
 saveRDS(df_GDP, file = "df_GDP.rds")
 write.csv(df_GDP, "df_GDP.csv")
@@ -462,9 +473,6 @@ ggplot(country_data_final, aes(x = mean_religiosity, y = pct_lgbt_support, label
 
 saveRDS(country_data_final, file = "country_data_final.rds")
 write.csv(country_data_final, "country_data_final.csv")
-
-
-# adjust the country codes to match those in the Eurobarometer dataset
 
 
 # 7. Unemployment rate ----------------------------------------------------
@@ -624,8 +632,6 @@ ess_data_clean <- country_data_final %>%
 country_level_df <- country_level_df %>%
   left_join(ess_data_clean, by = c("iso2" = "cntry"))
 
-country_level_df %>% View()
-
 # delete the first Greece row
 greece_rows <- which(country_level_df$country_name == "Greece")
 
@@ -738,6 +744,8 @@ country_level_df <- country_level_df %>%
 # delete the "Country.x", "Country.y" and "CountryName" columns
 country_level_df <- country_level_df %>%
   select(-c("Country.x", "Country.y", "CountryName"))
+
+# multiple imputation
 
 # save as RDS and csv
 saveRDS(country_level_df, file = "country_level_df.rds")
