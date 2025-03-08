@@ -1,0 +1,30 @@
+---
+title: "Prediction Model"
+author: "Phong, Marvin, Isabel"
+date: "2025-03-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Objectives
+
+Machine learning techniques will be applied to forecast support levels based on observed trends.
+
+Ensure the model’s accuracy and reliability, rigorous calibration and validation will be necessary.
+
+# Identify Relevant Features
+
+## Feature Creation
+
+## Feature Engineering
+
+## Feature Selection
+
+# Select Modeling Method
+
+# Train Model
+
+# Performance Evaluation
