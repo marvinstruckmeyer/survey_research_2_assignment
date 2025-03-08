@@ -20,28 +20,40 @@ Ensure the model’s accuracy and reliability, rigorous calibration and validati
 ```{r}
 library(tidyverse)
 library(ggplot2)
-library(ROSE)
+library(caret)
 ```
 
 # Data
 
 ```{r}
 data <- read_rds("df_rf.rds") %>% 
-  mutate(isocntry = as.character(isocntry))
+  mutate(isocntry = as.character(isocntry),
+         qc19 = as.factor(qc19))
+```
+
+## Training Data Split
+
+```{r}
+trainIndex <- createDataPartition(data$qc19, p=0.7,
+                             list = FALSE,
+                             times = 1)
+train <- data[trainIndex,]
+test <- data[-trainIndex,]
 ```
 
 ## Data Imbalance Check
 
 ```{r}
-data %>% 
+train %>% 
   mutate(isocntry = ifelse(isocntry %in% c("DE-W", "DE-E"), "DE", isocntry)) %>% 
   group_by(qc19) %>% 
   summarise(count = n()) %>% 
   mutate(percent = count/sum(count)) %>% 
   arrange(desc(percent)) %>% 
   ungroup() %>% 
-  ggplot(aes(x= qc19, y=percent)) +
-  geom_col()
+  ggplot(aes(x= qc19, y=percent, label=count)) +
+  geom_col() +
+  geom_text(vjust = -0.3)
 ```
 
 There is a clear imbalance within the answers to qc19. We, therefore, will balance the data set in order to improve the performance of the prediction model.
