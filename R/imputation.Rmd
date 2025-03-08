@@ -110,38 +110,32 @@ df <- data %>%
 
 var <- sapply(df, var) %>% 
   as.list() %>% 
-  .[!(is.na(.))] %>% 
-  .[. != 0] %>% 
+  .[. != 0 | is.na(.)] %>% 
   names()
 
-cat <- df %>% 
-  select(!where(is.numeric)) %>% 
-  select(!c("doi", "version")) %>% 
-  colnames()
-
 df <- df %>% 
-  select(all_of(c(var,cat)))
-```
-
-```{r warning = FALSE}
-m <- 5
-
-df_pmm <- complete(mice(df, m = m, method='pmm'), action=m)
-df_rf <- complete(mice(df, m = m, method='rf'), action=m)
-df_cart <- complete(mice(df, m = m, method='cart'), action=m)
-df_logReg <- complete(mice(df, m = m, method='logreg'), action=m)
+  select(all_of(var)) %>% 
+  select(!c("doi", "version", "caseid", "uniqid", "serialid")) %>% 
+  mutate(across(cat, haven::as_factor)) %>% 
+  sjlabelled::remove_all_labels()
 ```
 
 ```{r}
-write_rds(df_pmm, "df_pmm.rds")
+df_rf <- complete(mice(df, m = 3, method='rf', maxit = 3, seed = 8532), action=3)
+```
+
+```{r}
 write_rds(df_rf, "df_rf.rds")
-write_rds(df_cart, "df_cart.rds")
-write_rds(df_logReg, "df_logReg.rds")
 ```
 
 ## Imputed data analysis
 
-### KS Test
+```{r}
+imputed_cols <- df %>% 
+  select(any_of(c(unique(missing_data$attribute))))
+```
+
+## KS Test
 
 ## Chi-Square Test
 
