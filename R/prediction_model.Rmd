@@ -20,15 +20,37 @@ Ensure the model’s accuracy and reliability, rigorous calibration and validati
 ```{r}
 library(tidyverse)
 library(ggplot2)
+library(ROSE)
 ```
 
 # Data
 
 ```{r}
-data <- read_rds("df_rf.rds")
+data <- read_rds("df_rf.rds") %>% 
+  mutate(isocntry = as.character(isocntry))
 ```
 
 ## Data Imbalance Check
+
+```{r}
+data %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-W", "DE-E"), "DE", isocntry)) %>% 
+  group_by(qc19) %>% 
+  summarise(count = n()) %>% 
+  mutate(percent = count/sum(count)) %>% 
+  arrange(desc(percent)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x= qc19, y=percent)) +
+  geom_col()
+```
+
+There is a clear imbalance within the answers to qc19. We, therefore, will balance the data set in order to improve the performance of the prediction model.
+
+## Undersampling
+
+## Oversampling
+
+## Synthetic Data
 
 # Select Modeling Method
 
