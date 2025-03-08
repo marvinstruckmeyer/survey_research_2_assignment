@@ -123,7 +123,7 @@ df <- df %>%
 ```
 
 ```{r}
-df_rf <- complete(mice(df, m = 1, method='rf', maxit = 1, seed = 8532), action=1)
+df_rf <- complete(mice(df, m = 3, method='rf', maxit = 3, seed = 8532), action=3)
 ```
 
 ```{r}
