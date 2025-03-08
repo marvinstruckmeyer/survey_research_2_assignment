@@ -60,7 +60,37 @@ There is a clear imbalance within the answers to qc19. We, therefore, will balan
 
 ## Undersampling
 
+```{r}
+under <- downSample(train, train$qc19)
+
+under %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-W", "DE-E"), "DE", isocntry)) %>% 
+  group_by(qc19) %>% 
+  summarise(count = n()) %>% 
+  mutate(percent = count/sum(count)) %>% 
+  arrange(desc(percent)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x= qc19, y=percent, label=count)) +
+  geom_col() +
+  geom_text(vjust = -0.3)
+```
+
 ## Oversampling
+
+```{r}
+over <- upSample(train, train$qc19)
+
+over %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-W", "DE-E"), "DE", isocntry)) %>% 
+  group_by(qc19) %>% 
+  summarise(count = n()) %>% 
+  mutate(percent = count/sum(count)) %>% 
+  arrange(desc(percent)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x= qc19, y=percent, label=count)) +
+  geom_col() +
+  geom_text(vjust = -0.3)
+```
 
 ## Synthetic Data
 
