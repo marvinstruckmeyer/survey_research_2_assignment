@@ -124,7 +124,9 @@ cor(compare_happiness$happiness_ranking, compare_happiness$support_ranking)
 ```{r}
 ggplot(compare_happiness, aes(x = support_ranking, y = happiness_ranking)) +
   geom_point() + 
-  geom_smooth( method = "lm")
+  geom_smooth(method = "lm") +
+  xlab("Support Ranking") +
+  ylab("Happiness Ranking")
 ```
 
 # Predictive Model
