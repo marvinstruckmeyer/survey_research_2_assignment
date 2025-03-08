@@ -11,17 +11,24 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Objectives
 
-Machine learning techniques will be applied to forecast support levels based on observed trends.
+Machine learning techniques will be applied to forecast support levels <https://github.com/phongtdng/Coursework---Text-Mining>based on observed trends.
 
 Ensure the model’s accuracy and reliability, rigorous calibration and validation will be necessary.
 
-# Identify Relevant Features
+# Library
 
-## Feature Creation
+```{r}
+library(tidyverse)
+library(ggplot2)
+```
 
-## Feature Engineering
+# Data
 
-## Feature Selection
+```{r}
+data <- read_rds("df_rf.rds")
+```
+
+## Data Imbalance Check
 
 # Select Modeling Method
 
