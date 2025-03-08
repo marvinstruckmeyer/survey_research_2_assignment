@@ -4,9 +4,9 @@
 # 3. Economist Democracy Scores for 2018 CHECK
 # 4. Happiness CHECK
 # 5. GDP per capita CHECK
-# 6. ESS round 9 ||
-# 7. Religious, age composition ||
-
+# 6. ESS round 9 CHECK
+# 7. Unemployment rate CHECK
+# 8. Gender equality index CHECK  
 
 
 ## further ideas:
@@ -20,10 +20,16 @@
 
 
 # load libraries ----------------------------------------------------------
+# devtools::install_github("vdeminstitute/vdemdata")
+
 library(tidyverse)
 library(dplyr)
 library(readr)
 library(vdemdata)
+library(survey) 
+library(countrycode)
+library(rvest)
+library(stringr)
 
 
 # mapping -----------------------------------------------------------------
@@ -62,6 +68,7 @@ vdem_eu_2019 <- vdem_data %>%
          v2x_egaldem, v2x_liberal, v2xcs_ccsi, v2x_freexp)  # select relevant variables
 
 saveRDS(vdem_eu_2019, file = "vdem_eu_2019.rds")
+write.csv(vdem_eu_2019, "vdem_eu_2019.csv")
 
 
 ## from the codebook: 
@@ -241,6 +248,8 @@ rainbow_df <- df_compressed
 
 # save the data frame
 saveRDS(rainbow_df, file = "rainbow_df.rds")
+write.csv(rainbow_df, "rainbow_df.csv")
+
 
 
 # 3. The Economist: Democracy scores 2018 ---------------------------------
@@ -259,6 +268,7 @@ democracy_scores <- data.frame(
   Regime_type = c("Flawed democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Flawed democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Full democracy", "Flawed democracy", "Full democracy", "Full democracy", "Full democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Full democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy", "Flawed democracy"))
 
 saveRDS(democracy_scores, file = "democracy_scores.rds")
+write.csv(democracy_scores, "democracy_scores.csv")
 
 
 # 4. Happiness data 2018 ---------------------------------------------------------------------
@@ -269,6 +279,8 @@ happiness_scores <- data.frame(
   Happiness_Score = c(7.632, 7.555, 5.358, 6.310, 6.489, 6.977, 6.000, 6.910, 7.441, 7.139, 5.410, 7.314, 6.965, 6.814, 4.933, 5.762, 6.711, 5.739, 5.620, 5.933, 5.952, 6.627, 6.123, 5.945, 6.173, 5.948, 5.321))
 
 saveRDS(happiness_scores, file = "happiness_scores.rds")
+write.csv(happiness_scores, "happiness_scores.csv")
+
 
 # 5. GDP per capita ---------------------------------------------------------------------
 df_GDP <- read_csv("data/raw/data_20250228194704.csv")
@@ -293,17 +305,443 @@ df_GDP <- df_GDP %>%
   # select relevant columns
   select(CountryName, iso2, gdp_2005, gdp_2018, gdp_growth)
 
+# add Greece GDP per capita data manually 
+greece_gdp <- data.frame(
+  CountryName = "Greece",
+  iso2 = "GR",
+  gdp_2005 = 22054,  # GDP per capita in 2005
+  gdp_2018 = 19873,  # GDP per capita in 2018
+  gdp_growth = ((19873 - 22054) / 22054) * 100)  # Calculate percent change
+
+# append Greece to the GDP dataset
+df_GDP <- rbind(df_GDP, greece_gdp)
+
 saveRDS(df_GDP, file = "df_GDP.rds")
+write.csv(df_GDP, "df_GDP.csv")
 
 
 # 6. ESS Round 9 ----------------------------------------------------------
 # https://ess.sikt.no/en/datafile/b2b0bf39-176b-4eca-8d26-3c05ea83d2cb
-ESS_df <- read_csv("data/raw/ESS9e03_2.csv")
+ess_data <- read_csv("data/raw/ESS9e03_2.csv")
+
+# select interesting variables, country and weight variables
+ess_selected <- ess_data %>%
+  select(
+    # identifiers and weights
+    cntry,          # country code
+    pspwght,        # post-stratification weight
+    dweight,        # design weight
+    
+    # key variables of interest
+    freehms,        # gays and lesbians free to live life as they wish
+    lrscale,        # left-right political scale
+    rlgdgr,         # how religious are you
+    ipeqopt,        # important that people are treated equally
+    atchctr,        # attachment to country
+    eduyrs,         # years of education
+    agea)            # age of respondent
+
+# function to recode ESS special values (negative values are typically missing values)
+recode_ess_missing <- function(x) {
+  ifelse(x < 0, NA, x)
+}
+
+# clean the data
+ess_clean <- ess_selected %>%
+  # recode special values to NA
+  mutate(across(c(freehms, lrscale, rlgdgr, ipeqopt, atchctr, eduyrs, agea), 
+                recode_ess_missing)) %>%
+  # create derived variables if needed
+  mutate(
+    # recode freehms to 0-1 scale (originally 1-5 where 1 = agree strongly)
+    freehms_support = case_when(
+      freehms %in% c(1, 2) ~ 1,  # agree and strongly agree
+      freehms %in% c(3, 4, 5) ~ 0,  # neutral, disagree, strongly disagree
+      TRUE ~ NA_real_),
+    
+    # create age groups
+    age_group = case_when(
+      agea < 35 ~ "18-34",
+      agea < 55 ~ "35-54",
+      TRUE ~ "55+"
+    ),
+    
+    # standardise left-right scale to 0-1
+    lrscale_std = (lrscale - 1) / 9,  # Original scale is 1-10
+    
+    # create high education indicator (above country median)
+    high_educ = NA  # will fill this in after calculating country medians
+  )
+
+# calculate country median education for relative education measure
+country_medians <- ess_clean %>%
+  group_by(cntry) %>%
+  summarize(median_educ = median(eduyrs, na.rm = TRUE))
+
+# join back to main data and create high education indicator
+ess_clean <- ess_clean %>%
+  left_join(country_medians, by = "cntry") %>%
+  mutate(high_educ = ifelse(eduyrs > median_educ, 1, 0))
+
+# calculate weighted means by country
+country_aggregates <- ess_clean %>%
+  # group by country
+  group_by(cntry) %>%
+  # calculate weighted statistics
+  summarize(
+    # sample size
+    n_respondents = n(),
+    n_valid = sum(!is.na(freehms)),
+    
+    # weighted means
+    pct_lgbt_support = weighted.mean(freehms_support, w = pspwght, na.rm = TRUE) * 100,
+    mean_religiosity = weighted.mean(rlgdgr, w = pspwght, na.rm = TRUE),
+    mean_left_right = weighted.mean(lrscale_std, w = pspwght, na.rm = TRUE),
+    mean_equal_values = weighted.mean(ipeqopt, w = pspwght, na.rm = TRUE),
+    mean_country_attach = weighted.mean(atchctr, w = pspwght, na.rm = TRUE),
+    mean_eduyrs = weighted.mean(eduyrs, w = pspwght, na.rm = TRUE),
+    mean_age = weighted.mean(agea, w = pspwght, na.rm = TRUE),
+    
+    # weighted proportions for categorical variables
+    pct_young = weighted.mean(age_group == "18-34", w = pspwght, na.rm = TRUE) * 100,
+    pct_high_educ = weighted.mean(high_educ, w = pspwght, na.rm = TRUE) * 100,
+    
+    # standard errors (for confidence intervals)
+    se_lgbt_support = sd(freehms_support, na.rm = TRUE) / sqrt(sum(!is.na(freehms_support))),
+    
+    # missing data proportions
+    pct_missing_lgbt = mean(is.na(freehms)) * 100)
+
+# calculate cross-variable country indicators
+country_indicators <- ess_clean %>%
+  group_by(cntry) %>%
+  summarize(
+    # correlation between age and LGBT support within country
+    age_lgbt_corr = cor(agea, freehms_support, use = "pairwise.complete.obs", method = "spearman"),
+    
+    # correlation between religiosity and LGBT support
+    relig_lgbt_corr = cor(rlgdgr, freehms_support, use = "pairwise.complete.obs", method = "spearman"),
+    
+    # inequality in LGBT support (standard deviation)
+    lgbt_support_inequality = sd(freehms_support, na.rm = TRUE),
+    
+    # education gradient in LGBT support (difference between high and low education)
+    educ_gradient = weighted.mean(freehms_support[high_educ == 1], w = pspwght[high_educ == 1], na.rm = TRUE) - 
+      weighted.mean(freehms_support[high_educ == 0], w = pspwght[high_educ == 0], na.rm = TRUE))
+
+# join the aggregates and indicators
+country_data_final <- country_aggregates %>%
+  left_join(country_indicators, by = "cntry") %>%
+  # create ISO country codes for easier merging with other datasets
+  mutate(
+    iso2c = countrycode(cntry, "iso2c", "iso2c"),
+    iso3c = countrycode(cntry, "iso2c", "iso3c"))
+
+# plot LGBT support by country
+ggplot(country_data_final, aes(x = reorder(cntry, pct_lgbt_support), y = pct_lgbt_support)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_errorbar(aes(ymin = pct_lgbt_support - 1.96*se_lgbt_support, 
+                    ymax = pct_lgbt_support + 1.96*se_lgbt_support), 
+                width = 0.2) +
+  labs(title = "Support for LGBT Rights by Country",
+       subtitle = "Percent agreeing gays and lesbians should be free to live as they wish",
+       x = "Country",
+       y = "Support (%)") +
+  theme_minimal() +
+  coord_flip()
+
+# examine relationship between religiosity and LGBT support
+ggplot(country_data_final, aes(x = mean_religiosity, y = pct_lgbt_support, label = cntry)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_text(hjust = -0.3, vjust = 0.3) +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(title = "Religiosity vs. LGBT Support by Country",
+       x = "Mean Religiosity Score",
+       y = "LGBT Support (%)") +
+  theme_minimal()
+
+saveRDS(country_data_final, file = "country_data_final.rds")
+write.csv(country_data_final, "country_data_final.csv")
 
 
+# adjust the country codes to match those in the Eurobarometer dataset
 
 
+# 7. Unemployment rate ----------------------------------------------------
+# https://en.wikipedia.org/wiki/List_of_European_Union_member_states_by_unemployment_rate
 
+# scrape data from Wikipedia
+url <- "https://en.wikipedia.org/wiki/List_of_European_Union_member_states_by_unemployment_rate"
+page <- read_html(url)
+tables <- html_table(page, fill = TRUE)
+eu_unemployment_table <- tables[[1]]
+
+# clean column names - simplify them to more standard names
+colnames(eu_unemployment_table) <- c("Country", "Unemployment", "Employment", "Year")
+
+# clean up the country names by removing footnote references
+eu_unemployment_table$Country <- gsub("\\[.*?\\]", "", eu_unemployment_table$Country)
+
+# make sure numeric columns are properly formatted
+eu_unemployment_table$Unemployment <- as.character(eu_unemployment_table$Unemployment)
+eu_unemployment_table$Employment <- as.numeric(as.character(eu_unemployment_table$Employment))
+eu_unemployment_table$Year <- as.numeric(as.character(eu_unemployment_table$Year))
+
+eu_unemployment_table <- eu_unemployment_table %>%
+  mutate(
+    # trim spaces from country names
+    Country = trimws(Country),
+    # convert Unemployment to numeric (remove any % signs or spaces if present)
+    Unemployment = as.numeric(gsub("[^0-9.]", "", Unemployment)))
+
+# modify Greece's unemployment rate to the 2018 value
+eu_unemployment_table$Unemployment[eu_unemployment_table$Country == "Greece"] <- 19.18
+eu_unemployment_table$Year[eu_unemployment_table$Country == "Greece"] <- 2018
+
+# add the UK data manually
+uk_data <- data.frame(
+  Country = "United Kingdom",
+  Unemployment = 4.12, # from Statista
+  Employment = 75.25,  # estimated from https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/articles/singlemonthlabourforcesurveyestimates/december2018
+  Year = 2018)
+
+# append UK data to the table
+eu_unemployment_table <- rbind(eu_unemployment_table, uk_data)
+
+# ignore the year column
+eu_unemployment_table <- eu_unemployment_table %>%
+  select(-Year)
+
+# save
+saveRDS(eu_unemployment_table, file = "eu_unemployment_table.rds")
+write.csv(eu_unemployment_table, "eu_unemployment_table.csv", row.names = FALSE)
+
+
+# 8. Gender equality ------------------------------------------------------
+# https://eige.europa.eu/gender-statistics/dgs/indicator/index__index_scores/datatable?time=2017&col=domain&row=geo
+gender_eq_index <- read_xlsx("data/raw/index__index_scores.xlsx", range = "A16:V44")
+
+gender_eq_index <- gender_eq_index %>%
+  select(country_name = "Geographic region\\(Sub-) Domain Scores", 
+         gender_equality_index = "Overall Gender Equality Index") %>%
+  mutate(country_name = ifelse(country_name == "Czechia", "Czech Republic", country_name))
+
+# Merge the data ----------------------------------------------------------
+# create a base dataframe with country identifying variables
+country_level_df <- country_mapping
+
+# merge V-Dem data
+country_level_df <- country_level_df %>%
+  left_join(vdem_eu_2019, by = c("country_name" = "country_name"))
+
+# fix country name in democracy_scores for Czech Republic if needed
+if(any(democracy_scores$Country == "Czechia")) {
+  democracy_scores$Country[democracy_scores$Country == "Czechia"] <- "Czech Republic"
+}
+
+# merge democracy scores
+country_level_df <- country_level_df %>%
+  left_join(democracy_scores, by = c("iso2" = "ISO2"))
+
+# merge GDP data
+country_level_df <- country_level_df %>%
+  left_join(df_GDP, by = "iso2")
+
+# rename some countries to match our country_name format
+rainbow_country_mapping <- data.frame(
+  original = c("Czechia", "Andorra", "Bosnia & Herzegovina", "North Macedonia", "United Kingdom"),
+  standardized = c("Czech Republic", "Andorra", "Bosnia and Herzegovina", "Macedonia", "United Kingdom"),
+  stringsAsFactors = FALSE)
+
+# apply standardized country names
+for(i in 1:nrow(rainbow_country_mapping)) {
+  rainbow_df$Country[rainbow_df$Country == rainbow_country_mapping$original[i]] <- 
+    rainbow_country_mapping$standardized[i]
+}
+
+# extract and rename rainbow map variables for clarity
+rainbow_data_clean <- rainbow_df %>%
+  select(
+    Country,
+    rainbow_score_2019 = Value_2019,
+    rainbow_score_2018 = Value_2018,
+    rainbow_score_avg_2019_2018 = Avg_2019_2018,
+    rainbow_score_avg_2013_2014 = Avg_2013_2014,
+    rainbow_score_difference = Difference)
+
+# merge Rainbow Map data
+country_level_df <- country_level_df %>%
+  left_join(rainbow_data_clean, by = c("country_name" = "Country"))
+
+# merge happiness data
+country_level_df <- country_level_df %>%
+  left_join(happiness_scores, by = c("iso2" = "ISO2"))
+
+# merge unemployment data
+country_level_df <- country_level_df %>%
+  left_join(eu_unemployment_table, by = c("country_name" = "Country"))
+
+# create a mapping between ESS country codes and ISO2
+ess_country_mapping <- data.frame(
+  cntry = c("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", 
+            "DE", "HU", "IE", "IT", "LV", "LT", "NL", "PL", "PT", "RO", 
+            "SK", "SI", "ES", "SE", "GB"),
+  iso2 = c("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", 
+           "DE", "HU", "IE", "IT", "LV", "LT", "NL", "PL", "PT", "RO", 
+           "SK", "SI", "ES", "SE", "GB"),
+  stringsAsFactors = FALSE)
+
+# first ensure cntry codes match our iso2 codes
+country_data_final <- country_data_final %>%
+  left_join(ess_country_mapping, by = "cntry") %>%
+  select(-iso2c, -iso3c) # remove original ISO codes to avoid confusion
+
+# rename variables for clarity
+ess_data_clean <- country_data_final %>%
+  select(
+    cntry,
+    n_respondents,
+    n_valid,
+    lgbt_support_percent = pct_lgbt_support,
+    mean_religiosity,
+    mean_left_right,
+    mean_equal_values,
+    mean_country_attach,
+    mean_eduyrs,
+    mean_age,
+    pct_young,
+    pct_high_educ,
+    se_lgbt_support,
+    pct_missing_lgbt,
+    age_lgbt_corr,
+    relig_lgbt_corr,
+    lgbt_support_inequality,
+    educ_gradient,
+    #iso3c
+  )
+
+# merge ESS data
+country_level_df <- country_level_df %>%
+  left_join(ess_data_clean, by = c("iso2" = "cntry"))
+
+country_level_df %>% View()
+
+# delete the first Greece row
+greece_rows <- which(country_level_df$country_name == "Greece")
+
+if (length(greece_rows) > 1) {
+  # remove the first instance of Greece
+  country_level_df <- country_level_df[-greece_rows[1], ]
+  
+  # verify the fix worked
+  greece_check <- country_level_df %>%
+    filter(country_name == "Greece")
+  print("Greece entries after removing the first instance:")
+  print(greece_check)
+}
+
+# add the gender equality index
+country_level_df <- country_level_df %>%
+  left_join(gender_eq_index, by = "country_name")
+
+## scaling: necessary for the regression analysis later on because the variables have vastly different scales
+country_level_df %>% 
+  select(where(is.numeric)) %>% 
+  summary()
+
+# we'll apply different scaling methods based on the type of variable:
+# 1. z-score standardization: for continuous variables to make them comparable (mean=0, sd=1)
+# 2. min-max normalization: for variables with natural bounds (e.g., 0-100 scores)
+# 3. log transformation: for heavily skewed variables like GDP
+
+# custom function to standardize (z-score)
+standardize <- function(x) {
+  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+}
+
+# custom function to min-max normalize
+normalize <- function(x) {
+  (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE) - min(x, na.rm = TRUE))
+}
+
+# z-scores for the democracy scores
+country_level_df <- country_level_df %>%
+  mutate(
+    z_v2x_libdem = standardize(v2x_libdem),
+    z_v2x_polyarchy = standardize(v2x_polyarchy),
+    z_v2x_gender = standardize(v2x_gender),
+    z_v2x_egaldem = standardize(v2x_egaldem),
+    z_v2x_liberal = standardize(v2x_liberal),
+    z_v2xcs_ccsi = standardize(v2xcs_ccsi),
+    z_v2x_freexp = standardize(v2x_freexp))
+
+# GDP and unemployment rate
+country_level_df <- country_level_df %>%
+  mutate(
+    z_gdp_2018 = standardize(gdp_2018),
+    log_gdp_2018 = log(gdp_2018),
+    z_gdp_growth = standardize(gdp_growth),
+    z_unemployment = standardize(Unemployment))
+
+# rainbow variables 
+country_level_df <- country_level_df %>%
+  mutate(
+    z_rainbow_score = standardize(rainbow_score_2019),
+    norm_rainbow_score = normalize(rainbow_score_2019),
+    z_lgbt_support = standardize(lgbt_support_percent),
+    norm_lgbt_support = normalize(lgbt_support_percent))
+
+# happiness scores
+country_level_df <- country_level_df %>%
+  mutate(
+    z_happiness = standardize(Happiness_Score),
+    z_gender_equality = standardize(gender_equality_index),
+    norm_gender_equality = normalize(gender_equality_index))
+
+# religion, politics, education and age
+country_level_df <- country_level_df %>%
+  mutate(
+    z_religiosity = standardize(mean_religiosity),
+    z_left_right = standardize(mean_left_right),
+    z_equal_values = standardize(mean_equal_values),
+    z_country_attach = standardize(mean_country_attach),
+    z_eduyrs = standardize(mean_eduyrs),
+    z_age = standardize(mean_age))
+
+# create two composite scores and regional classification
+country_level_df <- country_level_df %>%
+  mutate(
+    composite_equality = rowMeans(
+      cbind(z_gender_equality, z_rainbow_score, z_v2x_gender),
+      na.rm = TRUE))
+
+country_level_df <- country_level_df %>%
+  mutate(
+    composite_democracy = rowMeans(
+      cbind(z_v2x_libdem, z_v2x_polyarchy, z_v2x_libdem, z_v2x_freexp), 
+      na.rm = TRUE))
+
+country_level_df <- country_level_df %>%
+  mutate(
+    region = case_when(
+      country_name %in% c("Denmark", "Finland", "Sweden", "Estonia", "Latvia", "Lithuania") ~ 
+        "Northern Europe",
+      country_name %in% c("Belgium", "Netherlands", "Luxembourg", "Germany", "France", 
+                          "Austria", "United Kingdom", "Ireland") ~ 
+          "Western Europe",
+       country_name %in% c("Portugal", "Spain", "Italy", "Malta", "Greece", "Cyprus") ~ 
+        "Southern Europe",
+      country_name %in% c("Poland", "Czech Republic", "Slovakia", "Hungary", "Slovenia", 
+                          "Croatia", "Romania", "Bulgaria") ~           "Eastern Europe",
+        TRUE ~ NA_character_))
+
+# delete the "Country.x", "Country.y" and "CountryName" columns
+country_level_df <- country_level_df %>%
+  select(-c("Country.x", "Country.y", "CountryName"))
+
+# save as RDS and csv
+saveRDS(country_level_df, file = "country_level_df.rds")
+write.csv(country_level_df, "country_level_df.csv")
 
 
 
