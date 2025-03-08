@@ -1,4 +1,3 @@
-# Simple, correct correlation graph
 library(ggplot2)
 library(dplyr)
 
