@@ -32,6 +32,10 @@ data <- read_rds("df_rf.rds") %>%
          qc19 = as.factor(qc19))
 ```
 
+# Select Modeling Method
+
+# Train Model
+
 ## Training Data Split
 
 ```{r}
@@ -59,9 +63,5 @@ train %>%
 ```
 
 There is a clear imbalance within the answers to qc19. We, therefore, will balance the data set in order to improve the performance of the prediction model.
-
-# Select Modeling Method
-
-# Train Model
 
 # Performance Evaluation
