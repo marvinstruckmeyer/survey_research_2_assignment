@@ -21,7 +21,7 @@ Objectives:
 
 -   Individual-level indicators complemented with country-level factors (e.g., cultural norms, legal frameworks. historical context, economic variables, societal attitudes towards LGBTI+ rights)
 
-## Context
+## Cultural Norms Context
 
 ```{r}
 rb_cat <- read_csv(file = "../data/2024-rainbow-map-data.csv", n_max = 2) %>% 
@@ -45,11 +45,18 @@ rb_data <- read_csv(file = "../data/2024-rainbow-map-data.csv", skip = 1) %>%
   mutate(ranking = ranking/100)
 ```
 
-### NORDICS
+```{r}
+happiness <- read_rds("../happiness_scores.rds")
 
-### BALTICS
+ggplot(happiness, aes(x=reorder(Country, Happiness_Score, decreasing = TRUE), y=Happiness_Score)) +
+  geom_col() +
+  xlab("Country") +
+  theme(axis.text.x = element_text(angle = 90))
+```
 
-### UKI
+```{r}
+
+```
 
 # Predictive Model
 
