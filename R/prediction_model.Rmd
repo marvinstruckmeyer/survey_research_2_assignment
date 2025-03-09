@@ -22,6 +22,7 @@ library(tidyverse)
 library(ggplot2)
 library(caret)
 library(ROSE)
+library(corrplot)
 ```
 
 # Data
@@ -30,6 +31,16 @@ library(ROSE)
 data <- read_rds("df_rf.rds") %>% 
   mutate(isocntry = as.character(isocntry),
          qc19 = as.factor(qc19))
+```
+
+# Regularization
+
+## Correlation Check
+
+```{r}
+cor <- cor(data %>% select_if(is.numeric))
+
+corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 ```
 
 # Select Modeling Method
