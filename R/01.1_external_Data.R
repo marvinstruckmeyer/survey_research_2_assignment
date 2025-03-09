@@ -25,6 +25,7 @@
 library(tidyverse)
 library(dplyr)
 library(readr)
+library(readxl)
 library(vdemdata)
 library(survey) 
 library(countrycode)
@@ -64,21 +65,14 @@ survey_country_mapping <- data.frame(
 # devtools::install_github("vdeminstitute/vdemdata")
 vdem_data <- vdem
 
-eu_countries <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", 
-                  "Czech Republic", "Denmark", "Estonia", "Finland", "France", 
-                  "Germany", "Greece", "Hungary", "Ireland", "Italy", "Latvia", 
-                  "Lithuania", "Luxembourg", "Malta", "Netherlands", "Poland", 
-                  "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Sweden")
-
-# filter for most recent data (2019 to match survey data) for EU countries
-vdem_eu_2019 <- vdem_data %>%
-  filter(country_name %in% eu_countries, year == 2019) %>%
+# filter for most recent data (2019 to match survey data)
+vdem_2019 <- vdem_data %>%
+  filter(country_name %in% survey_country_mapping$country_name, year == 2019) %>%
   select(country_name, v2x_libdem, v2x_polyarchy, v2x_gender, 
          v2x_egaldem, v2x_liberal, v2xcs_ccsi, v2x_freexp)  # select relevant variables
 
-saveRDS(vdem_eu_2019, file = "vdem_eu_2019.rds")
-write.csv(vdem_eu_2019, "vdem_eu_2019.csv")
-
+saveRDS(vdem_2019, file = "vdem_eu_2019.rds")
+write.csv(vdem_2019, "vdem_eu_2019.csv")
 
 ## from the codebook: 
 # v2x_libdem: index of liberal democracy
@@ -94,7 +88,7 @@ write.csv(vdem_eu_2019, "vdem_eu_2019.csv")
 # 2. Rainbowmap --------------------------------------------------------------
 # https://rainbowmap.ilga-europe.org/
 
-rainbow_data <- read_csv("data/raw/2024-rainbow-map-data.csv")
+# rainbow_data <- read_csv("data/raw/2024-rainbow-map-data.csv")
 
 # but the problem: that's for 2024, not 2019 or before 2019
 # hence, we would need to get the data for 2019 and years before:
@@ -473,8 +467,6 @@ saveRDS(country_data_final, file = "country_data_final.rds")
 write.csv(country_data_final, "country_data_final.csv")
 
 
-# adjust the country codes to match those in the Eurobarometer dataset
-
 
 # 7. Unemployment rate ----------------------------------------------------
 # https://en.wikipedia.org/wiki/List_of_European_Union_member_states_by_unemployment_rate
@@ -541,7 +533,7 @@ country_level_df <- survey_country_mapping
 
 # merge V-Dem data
 country_level_df <- country_level_df %>%
-  left_join(vdem_eu_2019, by = c("country_name" = "country_name"))
+  left_join(vdem_2019, by = c("country_name" = "country_name"))
 
 # fix country name in democracy_scores for Czech Republic if needed
 if(any(democracy_scores$Country == "Czechia")) {
