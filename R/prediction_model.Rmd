@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = T)
 ```
 
 # Objectives
@@ -23,6 +23,7 @@ library(ggplot2)
 library(caret)
 library(ROSE)
 library(corrplot)
+library(glmnet)
 ```
 
 # Data
@@ -31,16 +32,6 @@ library(corrplot)
 data <- read_rds("df_rf.rds") %>% 
   mutate(isocntry = as.character(isocntry),
          qc19 = as.factor(qc19))
-```
-
-# Regularization
-
-## Correlation Check
-
-```{r}
-cor <- cor(data %>% select_if(is.numeric))
-
-corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 ```
 
 # Select Modeling Method
@@ -78,5 +69,25 @@ train %>%
 ```
 
 There is a clear imbalance within the answers to qc19. We, therefore, will balance the data set in order to improve the performance of the prediction model.
+
+# Regularization
+
+## Correlation Check
+
+```{r}
+cor <- cor(train %>% select_if(is.numeric))
+
+corrplot(cor, method="color", type="lower", tl.cex = 0.2)
+```
+
+## Lasso Dimension Reduction
+
+```{r}
+set.seed(5472)
+# 10-fold cross-validation to select lambda
+lambdas <- 10^seq(-3,5, length.out=100)
+lasso <- cv.glmnet(train, train$qc19, alpha = 1, lambda = lambdas,
+                   standardize = TRUE, nfolds = 10)
+```
 
 # Performance Evaluation
