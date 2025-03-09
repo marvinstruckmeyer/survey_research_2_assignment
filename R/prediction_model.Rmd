@@ -6,25 +6,88 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = T)
 ```
 
 # Objectives
 
-Machine learning techniques will be applied to forecast support levels based on observed trends.
+Machine learning techniques will be applied to forecast support levels <https://github.com/phongtdng/Coursework---Text-Mining>based on observed trends.
 
 Ensure the model’s accuracy and reliability, rigorous calibration and validation will be necessary.
 
-# Identify Relevant Features
+# Library
 
-## Feature Creation
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(caret)
+library(ROSE)
+library(corrplot)
+library(glmnet)
+```
 
-## Feature Engineering
+# Data
 
-## Feature Selection
+```{r}
+data <- read_rds("df_rf.rds") %>% 
+  mutate(isocntry = as.character(isocntry),
+         qc19 = as.factor(qc19))
+```
 
 # Select Modeling Method
 
+Since the data is nested, that is we have responses from individuals from various country, and we aim to analyze the differences across the countries as well as their influence on individuals, we will use a Multilevel Model.
+
+We will also examine other methods such as Random Forest, although the model performance might be compromised as it does not account for the hierarchical structure of the data. We will mitigate this by using a Mixed-Effects Random Forest (MERF), which combines Random Forest and Multilevel Modeling.
+
 # Train Model
+
+## Training Data Split
+
+```{r}
+set.seed(3147)
+trainIndex <- createDataPartition(data$qc19, p=0.7,
+                             list = FALSE,
+                             times = 1)
+train <- data[trainIndex,]
+test <- data[-trainIndex,]
+```
+
+## Data Imbalance Check
+
+```{r}
+train %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-W", "DE-E"), "DE", isocntry)) %>% 
+  group_by(qc19) %>% 
+  summarise(count = n()) %>% 
+  mutate(percent = count/sum(count)) %>% 
+  arrange(desc(percent)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x= qc19, y=percent, label=count)) +
+  geom_col() +
+  geom_text(vjust = -0.3)
+```
+
+There is a clear imbalance within the answers to qc19. We, therefore, will balance the data set in order to improve the performance of the prediction model.
+
+# Regularization
+
+## Correlation Check
+
+```{r}
+cor <- cor(train %>% select_if(is.numeric))
+
+corrplot(cor, method="color", type="lower", tl.cex = 0.2)
+```
+
+## Lasso Dimension Reduction
+
+```{r}
+set.seed(5472)
+# 10-fold cross-validation to select lambda
+lambdas <- 10^seq(-3,5, length.out=100)
+lasso <- cv.glmnet(train, train$qc19, alpha = 1, lambda = lambdas,
+                   standardize = TRUE, nfolds = 10)
+```
 
 # Performance Evaluation
