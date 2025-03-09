@@ -38,35 +38,47 @@ library(naniar)
 library(caret)      
 
 # mapping -----------------------------------------------------------------
+# we comment out the country codes as we likely don't need them
 survey_country_mapping <- data.frame(
   country_name = c("France", "Belgium", "Netherlands", "Germany", "Italy", 
                    "Luxembourg", "Denmark", "Ireland", "United Kingdom", "Greece", 
-                   "Spain", "Portugal", "Germany (East)", "Finland", "Sweden", 
+                   "Spain", "Portugal", "Finland", "Sweden", 
                    "Austria", "Cyprus", "Czech Republic", "Estonia", "Hungary", 
                    "Latvia", "Lithuania", "Malta", "Poland", "Slovakia", 
                    "Slovenia", "Bulgaria", "Romania", "Croatia"),
-  survey_country_code = c(1, 2, 3, 4, 5, 
-                          6, 7, 8, 9, 11, 
-                          12, 13, 14, 16, 17, 
-                          18, 19, 20, 21, 22, 
-                          23, 24, 25, 26, 27, 
-                          28, 29, 30, 32),
+  #survey_country_code = c(1, 2, 3, 4, 5, 
+  #                        6, 7, 8, 9, 11, 
+  #                        12, 13, 16, 17, 
+  #                        18, 19, 20, 21, 22, 
+  #                        23, 24, 25, 26, 27, 
+  #                        28, 29, 30, 32),
   iso2 = c("FR", "BE", "NL", "DE", "IT", 
            "LU", "DK", "IE", "GB", "GR", 
-           "ES", "PT", "DE", "FI", "SE", 
+           "ES", "PT", "FI", "SE", 
            "AT", "CY", "CZ", "EE", "HU", 
            "LV", "LT", "MT", "PL", "SK", 
            "SI", "BG", "RO", "HR"),
   stringsAsFactors = FALSE)
 
+# create a mapping for country name standardization: the Czech Republic is a problem
+country_name_mapping <- c("Czechia" = "Czech Republic")
+
 
 # 1. vdemdata ----------------------------------------------------------------
-# install the package frlm GitHub first
+# install the package from GitHub first:
 # devtools::install_github("vdeminstitute/vdemdata")
 vdem_data <- vdem
 
+# apply country name standardization before filtering
+vdem_data_standardized <- vdem_data %>%
+  mutate(
+    # Standardize country names
+    country_name = ifelse(country_name %in% names(country_name_mapping),
+                          country_name_mapping[country_name],
+                          country_name))
+
 # filter for most recent data (2019 to match survey data)
-vdem_2019 <- vdem_data %>%
+vdem_2019 <- vdem_data_standardized %>%
   filter(country_name %in% survey_country_mapping$country_name, year == 2019) %>%
   select(country_name, v2x_libdem, v2x_polyarchy, v2x_gender, 
          v2x_egaldem, v2x_liberal, v2xcs_ccsi, v2x_freexp)  # select relevant variables
@@ -287,8 +299,16 @@ write.csv(happiness_scores, "happiness_scores.csv")
 
 # 5. GDP per capita ---------------------------------------------------------------------
 df_GDP <- read_csv("data/raw/data_20250228194704.csv")
+
+# apply the mapping to the CountryName column
 df_GDP <- df_GDP %>%
+  mutate(
+    # replace Czechia with Czech Republic
+    CountryName = ifelse(CountryName %in% names(country_name_mapping), 
+                         country_name_mapping[CountryName], 
+                         CountryName)) %>%
   select("CountryName", "PeriodCode", "Value") %>%
+  # now filter after standardizing the names
   filter(CountryName %in% survey_country_mapping$country_name)
 
 df_GDP <- df_GDP %>%
@@ -307,17 +327,6 @@ df_GDP <- df_GDP %>%
   left_join(survey_country_mapping, by = c("CountryName" = "country_name")) %>%
   # select relevant columns
   select(CountryName, iso2, gdp_2005, gdp_2018, gdp_growth)
-
-# add Greece GDP per capita data manually 
-greece_gdp <- data.frame(
-  CountryName = "Greece",
-  iso2 = "GR",
-  gdp_2005 = 22054,  # GDP per capita in 2005
-  gdp_2018 = 19873,  # GDP per capita in 2018
-  gdp_growth = ((19873 - 22054) / 22054) * 100)  # Calculate percent change
-
-# append Greece to the GDP dataset
-df_GDP <- rbind(df_GDP, greece_gdp)
 
 saveRDS(df_GDP, file = "df_GDP.rds")
 write.csv(df_GDP, "df_GDP.csv")
