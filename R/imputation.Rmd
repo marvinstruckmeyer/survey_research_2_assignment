@@ -35,7 +35,7 @@ library(mice)
 ```
 
 ```{r}
-data <- read_dta("../data/raw/ZA7575.dta")
+data <- read_dta("../data/raw/ZA7575.dta") 
 
 data_labels <- sapply(data, function(x) attr(x, "label")) %>% 
   as.data.frame() %>% 
@@ -108,7 +108,8 @@ Missing Data Mechanism
 
 ```{r}
 df <- data %>% 
-  select(!(starts_with("p6")|starts_with("p13")|starts_with("p7")|starts_with("d40")|starts_with("qa3")|starts_with("qa15")|starts_with("d15b")|starts_with("qa2")|starts_with("qb8")|starts_with("qa18b")|starts_with("qa4b")))
+  select(!(starts_with("p6")|starts_with("p13")|starts_with("p7")|starts_with("d40")|starts_with("qa3")|starts_with("qa15")|starts_with("d15b")|starts_with("qa2")|starts_with("qb8")|starts_with("qa18b")|starts_with("qa4b"))) %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-W", "DE-E"), "DE", isocntry))
 
 var <- sapply(df, var) %>% 
   as.list() %>% 
@@ -120,6 +121,15 @@ df <- df %>%
   select(!c("doi", "version", "caseid", "uniqid", "serialid")) %>% 
   mutate(across(c(isocntry), as.factor)) %>% 
   sjlabelled::remove_all_labels()
+
+# pre-cleaning 
+df <- df %>% 
+  mutate(across(starts_with("qa5b"), ~ ifelse(qa5a %in% c(12,13), 0,.)))
+```
+
+```{r}
+cor_check <- cor(df %>% select_if(is.numeric) %>% drop_na(), use = "pairwise.complete.obs") 
+cor_check["qa5b_12",cor_check[, "qa5b_12"] == 1]
 ```
 
 ```{r}
