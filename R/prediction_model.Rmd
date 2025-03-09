@@ -119,4 +119,38 @@ select_features_lasso <- rownames(lasso_coefs)[coefs[,1] != 0][-1]
 select_features_lasso
 ```
 
+## Elastic Net Dimension Reduction
+
+```{r message = FALSE}
+set.seed(3244)
+# Training control
+ctrl <- trainControl(method = "repeatedcv",
+                     number=10,
+                     repeats = 5,
+                     search = "random",
+                     verboseIter = TRUE)
+# Train model
+enet <- train(qc19 ~., data = train, method="glmnet",
+              ppreProcess = c("center", "scale"),
+              tuneLength = 25,
+              trControl = ctrl)
+
+# Check R-Squared
+y_hat_enet <- predict(enet, select(train, -qc19))
+rsq_enet <- cor(y, y_hat_enet)^2
+rsq_enet
+```
+
+```{r}
+# Columns with coef = 0
+enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>% 
+  as.matrix() %>% 
+  data.frame() 
+
+select_coefs_enet <- enet_coefs %>% 
+  filter(s1 != 0) %>% 
+  row.names()
+select_coefs_enet
+```
+
 # Performance Evaluation
