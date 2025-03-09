@@ -140,7 +140,7 @@ country_data_combined <- country_data_combined %>%
            list(norm = ~(.-min(., na.rm=TRUE))/(max(., na.rm=TRUE)-min(., na.rm=TRUE))),
            .names = "norm_{.col}"))
 
-# save the final combined dataset
+# save the combined dataset
 saveRDS(country_data_combined, file = "country_data_combined.rds")
 write_csv(country_data_combined, "country_data_combined.csv")
 
@@ -149,7 +149,7 @@ df_rf_enriched <- df_rf %>%
   # ISO codes as key
   left_join(country_data_combined, by = c("isocntry" = "iso2"))
 
-# 
+# save final dataset
 saveRDS(df_rf_enriched, file = "df_rf_enriched.rds")
 write_csv(df_rf_enriched, "df_rf_enriched.csv")
 
