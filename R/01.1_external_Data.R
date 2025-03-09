@@ -30,23 +30,32 @@ library(survey)
 library(countrycode)
 library(rvest)
 library(stringr)
-
+library(mice)       
+library(VIM)
+library(visdat)    
+library(naniar)     
+library(caret)      
 
 # mapping -----------------------------------------------------------------
-country_mapping <- data.frame(
-  country_name = c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", 
-                   "Czech Republic", "Denmark", "Estonia", "Finland", "France", 
-                   "Germany", "Greece", "Hungary", "Ireland", "Italy", 
-                   "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", 
-                   "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", 
-                   "Spain", "Sweden", "United Kingdom"),
-  iso2 = c("AT", "BE", "BG", "HR", "CY", 
-           "CZ", "DK", "EE", "FI", "FR", 
-           "DE", "GR", "HU", "IE", "IT", # GR = EL in the survey
-           "LV", "LT", "LU", "MT", "NL", 
-           "PL", "PT", "RO", "SK", "SI", 
-           "ES", "SE", "GB"), # GB = UK in the survey
-  country_code = 1:28,  
+survey_country_mapping <- data.frame(
+  country_name = c("France", "Belgium", "Netherlands", "Germany", "Italy", 
+                   "Luxembourg", "Denmark", "Ireland", "United Kingdom", "Greece", 
+                   "Spain", "Portugal", "Germany (East)", "Finland", "Sweden", 
+                   "Austria", "Cyprus", "Czech Republic", "Estonia", "Hungary", 
+                   "Latvia", "Lithuania", "Malta", "Poland", "Slovakia", 
+                   "Slovenia", "Bulgaria", "Romania", "Croatia"),
+  survey_country_code = c(1, 2, 3, 4, 5, 
+                          6, 7, 8, 9, 11, 
+                          12, 13, 14, 16, 17, 
+                          18, 19, 20, 21, 22, 
+                          23, 24, 25, 26, 27, 
+                          28, 29, 30, 32),
+  iso2 = c("FR", "BE", "NL", "DE", "IT", 
+           "LU", "DK", "IE", "GB", "GR", 
+           "ES", "PT", "DE", "FI", "SE", 
+           "AT", "CY", "CZ", "EE", "HU", 
+           "LV", "LT", "MT", "PL", "SK", 
+           "SI", "BG", "RO", "HR"),
   stringsAsFactors = FALSE)
 
 
@@ -286,7 +295,7 @@ write.csv(happiness_scores, "happiness_scores.csv")
 df_GDP <- read_csv("data/raw/data_20250228194704.csv")
 df_GDP <- df_GDP %>%
   select("CountryName", "PeriodCode", "Value") %>%
-  filter(CountryName %in% country_mapping$country_name)
+  filter(CountryName %in% survey_country_mapping$country_name)
 
 df_GDP <- df_GDP %>%
   mutate(Value = as.numeric(as.character(Value)))
@@ -301,7 +310,7 @@ df_GDP <- df_GDP %>%
     # calculate relative growth
     gdp_growth = (gdp_2018 - gdp_2005) / gdp_2005 * 100) %>%
   # add ISO2 codes for easier joining with other datasets
-  left_join(country_mapping, by = c("CountryName" = "country_name")) %>%
+  left_join(survey_country_mapping, by = c("CountryName" = "country_name")) %>%
   # select relevant columns
   select(CountryName, iso2, gdp_2005, gdp_2018, gdp_growth)
 
@@ -528,7 +537,7 @@ gender_eq_index <- gender_eq_index %>%
 
 # Merge the data ----------------------------------------------------------
 # create a base dataframe with country identifying variables
-country_level_df <- country_mapping
+country_level_df <- survey_country_mapping
 
 # merge V-Dem data
 country_level_df <- country_level_df %>%
@@ -675,7 +684,7 @@ country_level_df <- country_level_df %>%
     z_v2xcs_ccsi = standardize(v2xcs_ccsi),
     z_v2x_freexp = standardize(v2x_freexp))
 
-# GDP and unemployment rate
+# z-scores for GDP and unemployment rate, natural log for GDP
 country_level_df <- country_level_df %>%
   mutate(
     z_gdp_2018 = standardize(gdp_2018),
@@ -683,7 +692,7 @@ country_level_df <- country_level_df %>%
     z_gdp_growth = standardize(gdp_growth),
     z_unemployment = standardize(Unemployment))
 
-# rainbow variables 
+# z-scores and normalised rainbow variables 
 country_level_df <- country_level_df %>%
   mutate(
     z_rainbow_score = standardize(rainbow_score_2019),
@@ -691,7 +700,7 @@ country_level_df <- country_level_df %>%
     z_lgbt_support = standardize(lgbt_support_percent),
     norm_lgbt_support = normalize(lgbt_support_percent))
 
-# happiness scores
+# z-socres and normalised for happiness scores and gender equality
 country_level_df <- country_level_df %>%
   mutate(
     z_happiness = standardize(Happiness_Score),
