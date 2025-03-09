@@ -68,9 +68,9 @@ train %>%
 
 There is a clear imbalance within the answers to qc19. We, therefore, will balance the data set in order to improve the performance of the prediction model.
 
-# Regularization
+## Regularization
 
-## Correlation Check
+### Correlation Check
 
 ```{r}
 cor <- cor(train %>% select_if(is.numeric))
@@ -78,7 +78,7 @@ cor <- cor(train %>% select_if(is.numeric))
 corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 ```
 
-## Lasso Dimension Reduction
+### Lasso Dimension Reduction
 
 ```{r}
 set.seed(5472)
@@ -119,7 +119,7 @@ select_features_lasso <- rownames(lasso_coefs)[coefs[,1] != 0][-1]
 select_features_lasso
 ```
 
-## Elastic Net Dimension Reduction
+### Elastic Net Dimension Reduction
 
 ```{r message = FALSE}
 set.seed(3244)
