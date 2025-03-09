@@ -13,8 +13,7 @@ vis_miss(country_level_df)
 # we have the following imputation strategy:
 # (1) we will have to delete the variables from the ESS because the Eurobarometer
 # survey contains similar information and imputing these values didn't seem appropriate
-# (2) we chose to impute rest of the variables with NAs (democracy scores, gender equality index, 
-# and the happiness score), using KNN
+# (2) we chose to impute the happiness score using KNN
 
 # (1) 
 # delete ESS variables
