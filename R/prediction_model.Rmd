@@ -29,9 +29,7 @@ library(glmnet)
 # Data
 
 ```{r}
-data <- read_rds("df_rf.rds") %>% 
-  mutate(isocntry = as.character(isocntry),
-         qc19 = as.factor(qc19))
+data <- read_rds("df_rf.rds")
 ```
 
 # Select Modeling Method
@@ -86,8 +84,39 @@ corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 set.seed(5472)
 # 10-fold cross-validation to select lambda
 lambdas <- 10^seq(-3,5, length.out=100)
-lasso <- cv.glmnet(train, train$qc19, alpha = 1, lambda = lambdas,
+
+# Matrix of predictors
+X <- train %>% select(-qc19) %>% as.matrix()
+y <- train %>% select(qc19) %>% scale(center=TRUE, scale=FALSE) %>% as.matrix()
+
+# Lasso with Cross-validation
+lasso <- cv.glmnet(X,  y, 
+                   alpha = 1, lambda = lambdas,
                    standardize = TRUE, nfolds = 10)
+
+# Plot cv results
+plot(lasso)
+```
+
+```{r}
+# Best cv lambda
+lambda_cv <- lasso$lambda.min
+
+# Fit final model
+model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE)
+y_hat_cv <- predict(model_cv, X)
+ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv)
+
+# Check R-squared
+rsq_lasso_cv <- cor(y, y_hat_cv)^2
+rsq_lasso_cv
+```
+
+```{r}
+lasso_coefs <- coef(model_cv)
+
+select_features_lasso <- rownames(lasso_coefs)[coefs[,1] != 0][-1]
+select_features_lasso
 ```
 
 # Performance Evaluation
