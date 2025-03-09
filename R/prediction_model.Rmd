@@ -147,10 +147,17 @@ enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>%
   as.matrix() %>% 
   data.frame() 
 
-select_coefs_enet <- enet_coefs %>% 
+select_features_enet <- enet_coefs %>% 
   filter(s1 != 0) %>% 
   row.names()
-select_coefs_enet
+select_features_enet
+```
+
+## Feature Selection
+
+```{r}
+train_lasso <- train %>% 
+  select(all_of(select_features_lasso))
 ```
 
 # Performance Evaluation
