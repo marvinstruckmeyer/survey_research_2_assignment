@@ -29,7 +29,7 @@ library(glmnet)
 # Data
 
 ```{r}
-data <- read_rds("df_rf.rds")
+data <- read_rds("../df_rf_enriched.rds")
 ```
 
 # Select Modeling Method
