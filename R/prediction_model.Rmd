@@ -125,14 +125,14 @@ select_features_lasso
 set.seed(3244)
 # Training control
 ctrl <- trainControl(method = "repeatedcv",
-                     number=10,
+                     number=5,
                      repeats = 5,
                      search = "random",
                      verboseIter = TRUE)
 # Train model
 enet <- train(qc19 ~., data = train, method="glmnet",
               ppreProcess = c("center", "scale"),
-              tuneLength = 25,
+              tuneLength = 15, 
               trControl = ctrl)
 
 # Check R-Squared
@@ -149,7 +149,8 @@ enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>%
 
 select_features_enet <- enet_coefs %>% 
   filter(s1 != 0) %>% 
-  row.names()
+  row.names() %>% 
+  .[-1]
 select_features_enet
 ```
 
@@ -158,6 +159,17 @@ select_features_enet
 ```{r}
 train_lasso <- train %>% 
   select(all_of(select_features_lasso))
+
+# Mapping enet
+select <- c()
+for (i in colnames(train %>% select_if(is.character))) {
+  if (sum(grepl("isocntry", select_features_enet)) >0) {
+    select <- c(select,i)
+  }
+}
+
+train_enet <- train %>% 
+  select(any_of(c(select_features_enet, select)))
 ```
 
 # Performance Evaluation
