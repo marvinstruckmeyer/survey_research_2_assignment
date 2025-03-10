@@ -7,28 +7,42 @@ df_reduced <- df_rf_enriched %>%
     country, country_name, isocntry,
     
     # individual demographics
-    d11,            # age
-    d10,            # gender
-    d8, d8r2,       # education level
-    d15a,           # occupation
-    d25,            # urbanicity (rural/urban)
-    d60,            # financial difficulties
-    d63,            # subjective social class
+    age = d11,           
+    gender = d10,            
+    education = d8, d8r2,      
+    occupation = d15a,           
+    urban_rural = d25,            
+    financial_insecurity = d60,            
+    social_class = d63,         
+    religion = sd3,            
+    political_ideology = d1,  
+    trans_friends = sd1_7,
     
-    # values and identity
-    sd3,            # religious affiliation
-    d1,             # political ideology (left-right)
-    sd2_5,          # sexual minority identity
-    qc15_1, qc15_2, qc15_3,  # Support for LGBT rights
-    qc6_10, qc6_10r,         # Comfort with LGBT people in positions of power
-    qc12_10, qc12_10r,       # Comfort with LGBT colleagues
-    qc13_10, qc13_10r,       # Comfort with children having LGBT relationships
-    sd1_4, sd1_5, sd1_7, sd1_8,  # Having LGBT, disabled, different religion, or transgender friends
-    qc18_1, qc18_2, qc18_3,      # Comfort with public displays of affection
+    # Personal identity
+    ethnic_minority = sd2_1,
+    skin_color_minority = sd2_2,
+    religious_minority = sd2_3,
+    sexual_lgbt_minority = sd2_5,
+    disability_minority = sd2_6,
+    other_minority = sd2_7,
+    none_minority = sd2_8,
     
-    # Discrimination perceptions
-    qc1_4, qc1_7, qc1_8, qc1_9, qc1_10,  # Perceived discrimination prevalence
-    qc2_4, qc2_5, qc2_6, qc2_7,          # Personal experience of discrimination
+    # Discrimination
+    trans_discrimination_country = qc1_8,
+    trans_discrimination_personal = qc2_6,
+    trans_discrimination_workplace = qc3_8,
+    trans_discrimination_political = qc6_10,
+    country_discrimination_efforts = qc7,
+    country_discrimination_efforts_recoded = qc7r,
+    trans_workplace_diversity = qc9_10,
+    trans_colleague = qc12_11,
+    trans_colleague_recoded = qc12_11r,
+    trans_child_relationship = qc13_11,
+    trans_child_relationship_recoded = qc13_11r,
+    lgb_rights = qc15_1, 
+    same_sex_relationship = qc15_2, 
+    same_sex_marriage = qc15_3,  
+    trans_school_materials - qc17_4,
     
     # Country-level variables
     gdp_2018,                # Economic development
@@ -37,23 +51,20 @@ df_reduced <- df_rf_enriched %>%
     Happiness_Score,         # National well-being
     v2x_libdem, Regime_type, # Democratic quality
     
-    # Country religious and demographic composition
-    pct_catholic,
-    pct_orthodox,
-    pct_protestant,
-    pct_atheist,
-    pct_nonbeliever,
-    pct_nonreligious,
+    # REMOVED - COVERED IN sd3: Country religious and demographic composition
     
     mean_left_right,         # Average political leaning
     pct_high_education,      # Education level
     region,                  # Geographic region
     
     # Paradata
-    p1,                      # Interview date
-    p2,                      # Interview begin time
-    p3,                      # Interview duration
-    p3r                      # Interview duration recoded
-    p4,                      # Number of people present during interview
-    p5                       # Respondent cooperation
+    interview_date = p1,                      
+    interview_start_time = p2,                      
+    interview_duration = p3,                      
+    interview_duration_recoded = p3r,                     
+    people_present_during_interview = p4,                      
+    respondent_cooperation = p5                       
   )
+
+# Save to a new file
+write_rds(df_reduced, "df_reduced.rds")
