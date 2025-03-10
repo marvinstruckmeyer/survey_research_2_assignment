@@ -15,7 +15,8 @@ df_reduced <- df_rf_enriched %>%
     financial_insecurity = d60,            
     social_class = d63,         
     religion = sd3,            
-    political_ideology = d1,  
+    political_ideology = d1, 
+    lgb_friends = sd1_4,
     trans_friends = sd1_7,
     
     # Personal identity
@@ -30,7 +31,7 @@ df_reduced <- df_rf_enriched %>%
     # Discrimination
     trans_discrimination_country = qc1_8,
     trans_discrimination_personal = qc2_6,
-    trans_discrimination_workplace = qc3_8,
+    trans_discrimination_workplace = qc4_8,
     trans_discrimination_political = qc6_10,
     country_discrimination_efforts = qc7,
     country_discrimination_efforts_recoded = qc7r,
@@ -41,8 +42,16 @@ df_reduced <- df_rf_enriched %>%
     trans_child_relationship_recoded = qc13_11r,
     lgb_rights = qc15_1, 
     same_sex_relationship = qc15_2, 
-    same_sex_marriage = qc15_3,  
-    trans_school_materials - qc17_4,
+    same_sex_marriage = qc15_3,
+    lgb_school_materials = qc17_3,
+    trans_school_materials = qc17_4,
+    intersex_school_materials = qc17_5,
+    two_men_public_affection = qc18_2,
+    two_men_public_affection_recoded = qc18_2r,
+    two_women_public_affection = qc18_3,
+    two_women_public_affection_recoded = qc18_3r,
+    non_gendered_docs = qc20,
+    
     
     # Country-level variables
     gdp_2018,                # Economic development
@@ -51,8 +60,22 @@ df_reduced <- df_rf_enriched %>%
     Happiness_Score,         # National well-being
     v2x_libdem, Regime_type, # Democratic quality
     
-    # REMOVED - COVERED IN sd3: Country religious and demographic composition
-    
+    gdp_2018,                # Economic development
+    rainbow_score_2019,      # LGBTI rights/protections
+    rainbow_score_2018,      # LGBTI rights/protections (previous year)
+    rainbow_score_avg_2019_2018, # Average LGBTI rights/protections
+    gender_equality_index,   # Gender equality
+    Happiness_Score,         # National well-being
+    v2x_libdem, v2x_egaldem, Regime_type, # Democratic quality
+    composite_equality,     # Equality measure
+    z_composite_equality,   # Standardized equality measure
+    norm_composite_equality, # Normalized equality measure
+    lgbt_support,           # LGBT support measure
+    z_lgbt_support,         # Standardized LGBT support
+    norm_lgbt_support,      # Normalized LGBT support
+    pct_friends_lgbt,       # Percentage of LGBT friends
+    z_pct_friends_lgbt,     # Standardized % of LGBT friends
+    norm_pct_friends_lgbt,  # Normalized % of LGBT friends
     mean_left_right,         # Average political leaning
     pct_high_education,      # Education level
     region,                  # Geographic region
