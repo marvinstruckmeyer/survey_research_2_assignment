@@ -223,4 +223,40 @@ saveRDS(rf_enet_under, file = "models/rf_enet_rose.rds")
 
 ### Mixed-effects Random Forest (MERF)
 
+### Gradient Boosting Machines (GBM)
+
+```{r}
+# enet
+
+## under
+ctrl$sampling <- "down"
+gbm_enet_under <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "gbm",
+  trControl = ctrl
+)
+saveRDS(gbm_enet_under, file = "models/gbm_enet_under.rds")
+
+## upper
+ctrl$sampling <- "up"
+gbm_enet_upper <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "gbm",
+  trControl = ctrl
+)
+saveRDS(gbm_enet_upper, file = "models/gbm_enet_upper.rds")
+
+## synthetic
+ctrl$sampling <- "rose"
+gbm_enet_rose <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "gbm",
+  trControl = ctrl
+)
+saveRDS(gbm_enet_under, file = "models/gbm_enet_rose.rds")
+```
+
 # Performance Evaluation
