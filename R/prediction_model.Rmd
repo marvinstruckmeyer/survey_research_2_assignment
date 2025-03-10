@@ -24,6 +24,7 @@ library(caret)
 library(ROSE)
 library(corrplot)
 library(glmnet)
+library(lme4)
 ```
 
 # Data
@@ -158,7 +159,7 @@ select_features_enet
 
 ```{r}
 train_lasso <- train %>% 
-  select(all_of(select_features_lasso))
+  select(all_of(c(select_features_lasso, "qc19")))
 
 # Mapping enet
 select <- c()
@@ -169,7 +170,55 @@ for (i in colnames(train %>% select_if(is.character))) {
 }
 
 train_enet <- train %>% 
-  select(any_of(c(select_features_enet, select)))
+  select(any_of(c(select_features_enet, select, "qc19"))) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  mutate(qc19 = as.factor(qc19))
 ```
+
+## Model Training
+
+### Multilevel Mixed Model (MLMM)
+
+### Random Forest (RF)
+
+```{r}
+ctrl <- trainControl(method = "repeatedcv", number=5,
+                     repeats = 5, verboseIter = TRUE)
+
+# enet
+
+## under
+ctrl$sampling <- "down"
+rf_enet_under <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "rf",
+  trControl = ctrl
+)
+saveRDS(rf_enet_under, file = "models/rf_enet_under.rds")
+
+## upper
+ctrl$sampling <- "up"
+rf_enet_upper <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "rf",
+  trControl = ctrl
+)
+saveRDS(rf_enet_upper, file = "models/rf_enet_upper.rds")
+
+## synthetic
+ctrl$sampling <- "rose"
+rf_enet_rose <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "rf",
+  trControl = ctrl
+)
+saveRDS(rf_enet_under, file = "models/rf_enet_rose.rds")
+
+```
+
+### Mixed-effects Random Forest (MERF)
 
 # Performance Evaluation
