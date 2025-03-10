@@ -177,14 +177,16 @@ train_enet <- train %>%
 
 ## Model Training
 
+```{r}
+ctrl <- trainControl(method = "repeatedcv", number=5,
+                     repeats = 5, verboseIter = TRUE)
+```
+
 ### Multilevel Mixed Model (MLMM)
 
 ### Random Forest (RF)
 
 ```{r}
-ctrl <- trainControl(method = "repeatedcv", number=5,
-                     repeats = 5, verboseIter = TRUE)
-
 # enet
 
 ## under
