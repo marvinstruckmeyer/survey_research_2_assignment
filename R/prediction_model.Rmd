@@ -33,12 +33,6 @@ library(lme4)
 data <- read_rds("../df_rf_enriched.rds")
 ```
 
-# Select Modeling Method
-
-Since the data is nested, that is we have responses from individuals from various country, and we aim to analyze the differences across the countries as well as their influence on individuals, we will use a Multilevel Model.
-
-We will also examine other methods such as Random Forest, although the model performance might be compromised as it does not account for the hierarchical structure of the data. We will mitigate this by using a Mixed-Effects Random Forest (MERF), which combines Random Forest and Multilevel Modeling.
-
 # Train Model
 
 ## Training Data Split
@@ -181,8 +175,6 @@ train_enet <- train %>%
 ctrl <- trainControl(method = "repeatedcv", number=5,
                      repeats = 5, verboseIter = TRUE)
 ```
-
-### Multilevel Mixed Model (MLMM)
 
 ### Random Forest (RF)
 
