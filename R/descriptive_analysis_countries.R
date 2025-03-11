@@ -4,6 +4,14 @@ library(corrplot)
 library(cluster)
 library(factoextra)
 library(ggrepel)
+library(randomForest)
+library(caret)
+library(DALEX) 
+library(ranger) 
+
+# load datasets
+df_reduced <- readRDS("df_reduced.rds")
+country_data_combined <- readRDS("country_data_combined.rds")
 
 # first calculate country aggregates for individual variables so that we have
 # continuous data for which we can more easily calculate correlations
@@ -165,18 +173,23 @@ country_level_variables <- df_reduced %>%
 
 # merge with aggregated data
 df_reduced_aggregated_complete <- df_reduced_aggregated %>%
-  left_join(country_level_vars, by = "country_name")
+  left_join(country_level_variables, by = "country_name")
 
 # what we could add
 setdiff(colnames(country_data_combined), country_level_variables)
 country_data_combined_add <- country_data_combined %>%
-  select(iso2, norm_gdp_growth, norm_Unemployment, pct_trade_support, norm_gdp_2018)
+  select(iso2, norm_gdp_growth, norm_Unemployment, pct_trade_support, norm_gdp_2018,
+         z_gender_equality, z_rainbow_score, z_v2x_libdem, z_v2x_egaldem, z_happiness,
+         norm_gdp_growth, z_v2x_gender)
 
 df_reduced_aggregated_complete <- df_reduced_aggregated_complete %>%
   left_join(country_data_combined_add, by = c("isocntry" = "iso2"))
 
 # Check the final dataset
 dim(df_reduced_aggregated_complete)
+
+# save it
+write_rds(df_reduced_aggregated_complete, "df_reduced_aggregated_complete")
 
 
 ### create different plots
@@ -236,14 +249,28 @@ ggplot(trans_support_correlations %>% head(15),
 
 # (3) create correlation matrix for key variables
 key_vars <- c("pct_support_trans", 
-              trans_support_correlations$variable[1:10], # top 10 correlates
+              trans_support_correlations$variable[1:25], # top 25 correlates
               "gdp_2018", "rainbow_score_2019", "gender_equality_index")
 
 key_cor_matrix <- cor(df_reduced_aggregated_complete[, key_vars], 
                       use = "pairwise.complete.obs")
 
-corrplot(key_cor_matrix, method = "color", type = "upper", 
-         order = "hclust", addCoef.col = "black", 
+corrplot(key_cor_matrix, method = "color",
+         order = "hclust", diag = F,
+         tl.col = "black", tl.srt = 45, 
+         number.cex = 0.6, tl.cex = 0.7)
+
+
+# (4) create correlation matrix for all country variables
+key_vars_country <- c("pct_support_trans", "norm_gdp_2018", "rainbow_score_2019",
+              "z_gender_equality", "norm_Unemployment", "norm_gdp_growth", 
+              "z_v2x_libdem", "z_v2x_egaldem","z_happiness", "z_v2x_gender")
+
+key_cor_matrix_country <- cor(df_reduced_aggregated_complete[, key_vars_country], 
+                      use = "pairwise.complete.obs")
+
+corrplot(key_cor_matrix_country, method = "color",
+         order = "hclust", diag = F, addCoef.col = "black",
          tl.col = "black", tl.srt = 45, 
          number.cex = 0.6, tl.cex = 0.7)
 
@@ -272,7 +299,7 @@ ggplot(df_reduced_aggregated_complete, aes(x = reorder(region, pct_support_trans
   theme(legend.position = "none")
 
 ### some regression
-# Create a scatterplot matrix with regression lines
+# create a scatterplot matrix with regression lines
 ggplot(df_reduced_aggregated_complete, 
        aes(x = pct_nonreligious, y = pct_support_trans)) +
   geom_point(aes(size = rainbow_score_2019, color = region)) +
@@ -362,8 +389,6 @@ ggplot(df_reduced, aes(x = political_ideology, y = as.numeric(qc19 == 1))) +
        y = "Probability of Support") +
   theme_minimal()
 
-## 
-
 # (3a) religion
 
 ggplot(df_reduced_aggregated_complete, aes(x = pct_nonreligious, y = pct_support_trans)) +
@@ -420,10 +445,68 @@ ggplot(religion_support, aes(x = reorder(religion_group, support_rate), y = supp
     panel.grid.minor = element_blank(),
     axis.text.y = element_text(face = "bold"))
 
+### intermediate conclusion:
+# based on the results, we should use the following variables in the multilevel
+# regression model
+
+# individual variables: 
+
+# country-level variables: 
+# z_rainbow_score, z_gender_equality, regions, z_v2x_libdem, z_v2z_egaldem, 
+# norm_gdp_2018
 
 
+### use ML for predictor selection (country variables)
+# prepare data for random forest by selecting variables we considered before
+df_reduced$region <- as.factor(df_reduced$region)
+df_reduced$Regime_type <- as.factor(df_reduced$Regime_type)
+df_reduced$qc19 <- ifelse(df_reduced$qc19 == 1, 1, ifelse(df_reduced$qc19 == 2, 0, NA)) %>%
+  as.factor() # convert target to binary
 
+# remove NAs due to the coding before
+df_reduced <- df_reduced %>%
+  na.omit()
 
+# join
+df_reduced_rf <- df_reduced %>%
+  left_join(country_data_combined, by = "country_name") 
+
+model_data <- df_reduced_rf %>%
+  select(region.x, z_v2x_libdem, z_v2x_egaldem, z_v2x_freexp, z_v2x_gender, z_v2x_liberal,
+         z_gender_equality_index, z_rainbow_score_2019, norm_gdp_2018, norm_Unemployment,
+         norm_Happiness_Score, norm_gdp_growth, z_Functioning_of_government,
+         z_Electoral_process_and_pluralism, qc19)
+
+# split data into training and testing
+set.seed(69420)
+train_index <- createDataPartition(model_data$qc19, p = 0.7, list = FALSE)
+train_data <- model_data[train_index, ]
+test_data <- model_data[-train_index, ]
+
+# train random forest
+rf_model <- ranger(
+  qc19 ~ ., # Exclude country as a predictor
+  data = train_data,
+  importance = "impurity", # Gini importance
+  num.trees = 500,
+  mtry = floor(sqrt(ncol(train_data) - 2)), # Default mtry for classification
+  probability = TRUE)
+
+# extract variable importance
+var_importance <- importance(rf_model)
+var_importance_df <- data.frame(
+  Variable = names(var_importance),
+  Importance = var_importance)
+var_importance_df <- var_importance_df[order(var_importance_df$Importance, decreasing = TRUE), ]
+
+# Plot variable importance
+ggplot(var_importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal() +
+  labs(title = "Variable Importance from Random Forest",
+       x = "Variables",
+       y = "Importance")
 
 
 
