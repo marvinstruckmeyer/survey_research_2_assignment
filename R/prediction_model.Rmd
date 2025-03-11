@@ -210,14 +210,14 @@ rf_enet_upper <- train(
 saveRDS(rf_enet_upper, file = "models/rf_enet_upper.rds")
 
 ## synthetic
-ctrl$sampling <- "rose"
-rf_enet_rose <- train(
+ctrl$sampling <- "smote"
+rf_enet_smote <- train(
   qc19 ~ .,
   data = train_enet,
   method = "rf",
   trControl = ctrl
 )
-saveRDS(rf_enet_under, file = "models/rf_enet_rose.rds")
+saveRDS(rf_enet_smote, file = "models/rf_enet_smote.rds")
 
 ```
 
@@ -249,14 +249,14 @@ gbm_enet_upper <- train(
 saveRDS(gbm_enet_upper, file = "models/gbm_enet_upper.rds")
 
 ## synthetic
-ctrl$sampling <- "rose"
-gbm_enet_rose <- train(
+ctrl$sampling <- "smote"
+gbm_enet_smote <- train(
   qc19 ~ .,
   data = train_enet,
   method = "gbm",
   trControl = ctrl
 )
-saveRDS(gbm_enet_under, file = "models/gbm_enet_rose.rds")
+saveRDS(gbm_enet_smote, file = "models/gbm_enet_smote.rds")
 ```
 
 # Performance Evaluation
