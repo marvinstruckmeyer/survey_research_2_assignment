@@ -279,6 +279,12 @@ bwplot(results_train, scales = list(x = list(relation = "free"), y = list(relati
 ## Prediction
 
 ```{r}
-p_rf_eu <- predict(rf_enet_under, test, type = "prob")
-p_rf_eo <- predict(rf_enet_over, test, type = "prob")
+test <- test %>% 
+  mutate(qc19 = as.factor(qc19))
+
+p_rf_eu <- predict(rf_enet_under, test) 
+p_rf_eo <- predict(rf_enet_over, test)
+
+confusionMatrix(p_rf_eu, test$qc19)$overall[1:2]
+confusionMatrix(p_rf_eo, test$qc19)$overall[1:2]
 ```
