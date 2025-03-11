@@ -24,14 +24,13 @@ library(caret)
 library(ROSE)
 library(corrplot)
 library(glmnet)
+library(lme4)
 ```
 
 # Data
 
 ```{r}
-data <- read_rds("df_rf.rds") %>% 
-  mutate(isocntry = as.character(isocntry),
-         qc19 = as.factor(qc19))
+data <- read_rds("../df_rf_enriched.rds")
 ```
 
 # Select Modeling Method
@@ -70,9 +69,9 @@ train %>%
 
 There is a clear imbalance within the answers to qc19. We, therefore, will balance the data set in order to improve the performance of the prediction model.
 
-# Regularization
+## Regularization
 
-## Correlation Check
+### Correlation Check
 
 ```{r}
 cor <- cor(train %>% select_if(is.numeric))
@@ -80,14 +79,184 @@ cor <- cor(train %>% select_if(is.numeric))
 corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 ```
 
-## Lasso Dimension Reduction
+### Lasso Dimension Reduction
 
 ```{r}
 set.seed(5472)
 # 10-fold cross-validation to select lambda
 lambdas <- 10^seq(-3,5, length.out=100)
-lasso <- cv.glmnet(train, train$qc19, alpha = 1, lambda = lambdas,
+
+# Matrix of predictors
+X <- train %>% select(-qc19) %>% as.matrix()
+y <- train %>% select(qc19) %>% scale(center=TRUE, scale=FALSE) %>% as.matrix()
+
+# Lasso with Cross-validation
+lasso <- cv.glmnet(X,  y, 
+                   alpha = 1, lambda = lambdas,
                    standardize = TRUE, nfolds = 10)
+
+# Plot cv results
+plot(lasso)
+```
+
+```{r}
+# Best cv lambda
+lambda_cv <- lasso$lambda.min
+
+# Fit final model
+model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE)
+y_hat_cv <- predict(model_cv, X)
+ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv)
+
+# Check R-squared
+rsq_lasso_cv <- cor(y, y_hat_cv)^2
+rsq_lasso_cv
+```
+
+```{r}
+lasso_coefs <- coef(model_cv)
+
+select_features_lasso <- rownames(lasso_coefs)[coefs[,1] != 0][-1]
+select_features_lasso
+```
+
+### Elastic Net Dimension Reduction
+
+```{r message = FALSE}
+set.seed(3244)
+# Training control
+ctrl <- trainControl(method = "repeatedcv",
+                     number=5,
+                     repeats = 5,
+                     search = "random",
+                     verboseIter = TRUE)
+# Train model
+enet <- train(qc19 ~., data = train, method="glmnet",
+              ppreProcess = c("center", "scale"),
+              tuneLength = 15, 
+              trControl = ctrl)
+
+# Check R-Squared
+y_hat_enet <- predict(enet, select(train, -qc19))
+rsq_enet <- cor(y, y_hat_enet)^2
+rsq_enet
+```
+
+```{r}
+# Columns with coef = 0
+enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>% 
+  as.matrix() %>% 
+  data.frame() 
+
+select_features_enet <- enet_coefs %>% 
+  filter(s1 != 0) %>% 
+  row.names() %>% 
+  .[-1]
+select_features_enet
+```
+
+## Feature Selection
+
+```{r}
+train_lasso <- train %>% 
+  select(all_of(c(select_features_lasso, "qc19")))
+
+# Mapping enet
+select <- c()
+for (i in colnames(train %>% select_if(is.character))) {
+  if (sum(grepl("isocntry", select_features_enet)) >0) {
+    select <- c(select,i)
+  }
+}
+
+train_enet <- train %>% 
+  select(any_of(c(select_features_enet, select, "qc19"))) %>% 
+  mutate_if(is.character, as.factor) %>% 
+  mutate(qc19 = as.factor(qc19))
+```
+
+## Model Training
+
+```{r}
+ctrl <- trainControl(method = "repeatedcv", number=5,
+                     repeats = 5, verboseIter = TRUE)
+```
+
+### Multilevel Mixed Model (MLMM)
+
+### Random Forest (RF)
+
+```{r}
+# enet
+
+## under
+ctrl$sampling <- "down"
+rf_enet_under <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "rf",
+  trControl = ctrl
+)
+saveRDS(rf_enet_under, file = "models/rf_enet_under.rds")
+
+## upper
+ctrl$sampling <- "up"
+rf_enet_upper <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "rf",
+  trControl = ctrl
+)
+saveRDS(rf_enet_upper, file = "models/rf_enet_upper.rds")
+
+## synthetic
+ctrl$sampling <- "rose"
+rf_enet_rose <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "rf",
+  trControl = ctrl
+)
+saveRDS(rf_enet_under, file = "models/rf_enet_rose.rds")
+
+```
+
+### Mixed-effects Random Forest (MERF)
+
+### Gradient Boosting Machines (GBM)
+
+```{r}
+# enet
+
+## under
+ctrl$sampling <- "down"
+gbm_enet_under <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "gbm",
+  trControl = ctrl
+)
+saveRDS(gbm_enet_under, file = "models/gbm_enet_under.rds")
+
+## upper
+ctrl$sampling <- "up"
+gbm_enet_upper <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "gbm",
+  trControl = ctrl
+)
+saveRDS(gbm_enet_upper, file = "models/gbm_enet_upper.rds")
+
+## synthetic
+ctrl$sampling <- "rose"
+gbm_enet_rose <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "gbm",
+  trControl = ctrl
+)
+saveRDS(gbm_enet_under, file = "models/gbm_enet_rose.rds")
 ```
 
 # Performance Evaluation
