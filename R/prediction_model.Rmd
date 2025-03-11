@@ -260,3 +260,12 @@ saveRDS(gbm_enet_under, file = "models/gbm_enet_rose.rds")
 ```
 
 # Performance Evaluation
+
+## Prediction
+
+```{r}
+rf_enet_under <- read_rds("models/rf_enet_under.rds")
+rf_enet_over <- read_rds("models/rf_enet_under.rds")
+
+p_rf_eu <- predict(rf_enet_under, test, type = "prob")
+```
