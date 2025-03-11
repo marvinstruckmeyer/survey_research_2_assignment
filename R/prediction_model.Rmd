@@ -278,6 +278,8 @@ bwplot(results_train, scales = list(x = list(relation = "free"), y = list(relati
 
 ## Prediction
 
+### Individual Level
+
 ```{r}
 test <- test %>% 
   mutate(qc19 = as.factor(qc19))
@@ -287,4 +289,39 @@ p_rf_eo <- predict(rf_enet_over, test)
 
 confusionMatrix(p_rf_eu, test$qc19)$overall[1:2]
 confusionMatrix(p_rf_eo, test$qc19)$overall[1:2]
+```
+
+### Country Level
+
+```{r}
+country_test <- test 
+country_test$p_rf_eu <- p_rf_eu
+country_test$p_rf_eo <- p_rf_eo
+
+original <- country_test %>% 
+  group_by(isocntry, qc19) %>%
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+
+country_rfeu <- country_test %>% 
+  group_by(isocntry, p_rf_eu) %>%
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+country_rfeu
+
+country_rfeo <- country_test %>% 
+  group_by(isocntry, p_rf_eo) %>%
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+country_rfeo
+
+comparison <- cbind(select(original, c(isocntry,qc19, pcg)), country_rfeu$pcg, country_rfeo$pcg) %>% 
+  rename("response" = 2,
+         "original" = 3,
+         "rfeu" = 4,
+         "rfeo" = 5)
+comparison
 ```
