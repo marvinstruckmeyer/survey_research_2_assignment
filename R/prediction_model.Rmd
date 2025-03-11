@@ -261,11 +261,24 @@ saveRDS(gbm_enet_under, file = "models/gbm_enet_rose.rds")
 
 # Performance Evaluation
 
-## Prediction
+## Performance Evaluation on Training Data
 
 ```{r}
 rf_enet_under <- read_rds("models/rf_enet_under.rds")
-rf_enet_over <- read_rds("models/rf_enet_under.rds")
+rf_enet_over <- read_rds("models/rf_enet_upper.rds")
 
+results_train <- resamples(list(rf_eu = rf_enet_under,
+               rf_eo = rf_enet_over))  
+summary(results_train)
+```
+
+```{r}
+bwplot(results_train, scales = list(x = list(relation = "free"), y = list(relation = "free")))
+```
+
+## Prediction
+
+```{r}
 p_rf_eu <- predict(rf_enet_under, test, type = "prob")
+p_rf_eo <- predict(rf_enet_over, test, type = "prob")
 ```
