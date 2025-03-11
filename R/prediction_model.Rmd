@@ -213,8 +213,6 @@ saveRDS(rf_enet_smote, file = "models/rf_enet_smote.rds")
 
 ```
 
-### Mixed-effects Random Forest (MERF)
-
 ### Gradient Boosting Machines (GBM)
 
 ```{r}
