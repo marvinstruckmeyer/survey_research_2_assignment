@@ -249,6 +249,43 @@ gbm_enet_smote <- train(
 saveRDS(gbm_enet_smote, file = "models/gbm_enet_smote.rds")
 ```
 
+### Support Vectoc Machine (SVM)
+
+```{r}
+# enet
+
+## under
+ctrl$sampling <- "down"
+svm_enet_under <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "svmRadial",
+  trControl = ctrl
+)
+saveRDS(svm_enet_under, file = "models/svm_enet_under.rds")
+
+## upper
+ctrl$sampling <- "up"
+svm_enet_upper <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "svmRadial",
+  trControl = ctrl
+)
+saveRDS(svm_enet_upper, file = "models/svm_enet_upper.rds")
+
+## synthetic
+ctrl$sampling <- "smote"
+svm_enet_smote <- train(
+  qc19 ~ .,
+  data = train_enet,
+  method = "svmRadial",
+  trControl = ctrl
+)
+saveRDS(svm_enet_smote, file = "models/svm_enet_smote.rds")
+
+```
+
 # Performance Evaluation
 
 ## Performance Evaluation on Training Data
