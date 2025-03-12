@@ -132,8 +132,9 @@ y <- train %>%
 ```{r message = FALSE}
 set.seed(3244)
 # Training control
-ctrl <- trainControl(method = "cv",
+ctrl <- trainControl(method = "repeatedcv",
                      number=5,
+                     repeats = 5,
                      search = "random",
                      verboseIter = TRUE)
 # Train model
@@ -149,14 +150,10 @@ confusionMatrix(y_hat_enet, as.factor(y))
 ```{r}
 # Columns with coef = 0
 enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>% 
-  unlist() 
+  unlist() %>% 
+  as.matrix() %>% 
+  as.data.frame()
 
-coef_matrix <- cbind(
-  as.matrix(enet_coefs[[1]]),
-  as.matrix(enet_coefs[[2]]),
-  as.matrix(enet_coefs[[3]])
-)
-  
 select_features_enet <- enet_coefs %>% 
   filter(s1 != 0) %>% 
   row.names() %>% 
