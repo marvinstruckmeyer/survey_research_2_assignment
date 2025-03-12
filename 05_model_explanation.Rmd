@@ -17,6 +17,9 @@ library(ggplot2)   # For data visualization
 library(dplyr)     # For data manipulation
 library(sjstats)   # For calculating ICC
 library(sjPlot)    # For plotting model results
+library(modelsummary)
+
+df_reduced <- readRDS("df_reduced.rds")
 
 # Quick data check
 table(df_reduced$country_name)
@@ -25,25 +28,56 @@ table(df_reduced$country_name)
 ### Visualize qc19 by country
 
 ```{r}
-country_means <- aggregate(qc19 ~ country_name, data = df_reduced, FUN = mean)
-country_means <- country_means[order(country_means$qc19), ]
+# Calculate the percentage of "Yes" (1) responses for qc19 by country
+country_means <- aggregate(qc19 == 1 ~ country_name, data = df_reduced, FUN = mean)
 
-ggplot(country_means, aes(x = reorder(country_name, qc19), y = qc19)) +
+# Multiply by 100 to get percentage and the sort
+country_means$percentage <- country_means$`qc19 == 1` * 100
+country_means <- country_means[order(country_means$percentage), ]
+
+# Create the plot
+ggplot(country_means, aes(x = reorder(country_name, percentage), y = percentage)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   theme_minimal() +
-  labs(title = "Average qc19 by Country",
+  labs(title = "Support for Transgender Rights by Country",
+       subtitle = "Percentage answering 'Yes' to allowing transgender people to change civil documents",
        x = "Country",
-       y = "Mean qc19") +
+       y = "Support (%)") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
 ```
+
+
+### Prepare for GLM
+
+```{r}
+df_reduced <- df_reduced %>%
+  mutate(
+    age_z = scale(age),
+    religion_z = scale(as.numeric(religion)),
+    political_ideology_z = scale(political_ideology),
+    respondent_cooperation_z = scale(as.numeric(respondent_cooperation)),
+    rainbow_score_z = scale(rainbow_score_2019),
+    v2x_egaldem_z = scale(v2x_egaldem))
+
+# Recode qc19 from 1/2 to 0/1
+df_reduced$qc19 <- ifelse(df_reduced$qc19 == 1, 1, 0)
+
+# Optimize the settings to avoid convergence problems
+control = glmerControl(optimizer = "bobyqa", 
+                       optCtrl = list(maxfun = 100000))
+
+```
+
 
 ## 1. Null model (intercept only)
 
-There is significant variation in qc19 scores between countries, justifying the need for a multilevel approach. About 12% of the differences in qc19 scores can be attributed to country-level factors, while 88% is due to individual differences.
+There is significant variation in qc19 scores between countries, justifying the need for a multilevel approach. About 12% of the differences in qc19 scores can be attributed to country-level factors, while 88% is due to individual differences. 12% of variation on the country-level is considered a lot, as the threshold for
+going ahead with multilevel models is usually 5%.
 
 ```{r}
 # STEP 1: Null Model (Intercept-only model)
-null_model <- lmer(qc19 ~ 1 + (1|country_name), data = df_reduced)
+null_model <- glmer(qc19 ~ 1 + (1|country_name), family = "binomial", data = df_reduced)
 summary(null_model)
 
 # Calculate ICC
@@ -57,9 +91,18 @@ Individual characteristics and interview quality (respondent cooperation) signif
 ```{r}
 # STEP 2: Add Individual-Level Predictors (Level 1)
 # starting with predictors that showed correlation with qc19
-model1 <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation + (1|country_name), 
+model1 <- glmer(qc19 ~ age_z + gender + religion_z + political_ideology_z + lgb_friends + trans_friends + respondent_cooperation_z + (1|country_name), 
+               family = "binomial", 
+               control = control,
                data = df_reduced)
 summary(model1)
+
+# compare with the null_model
+modelsummary(
+  list("Model 1" = null_model, 
+       "Model 2" = model1),
+  stars = TRUE,
+  gof_map = c("nobs", "aic", "bic", "logLik", "r.squared"))
 ```
 
 ## 3. Country-level predictors (level 2)
@@ -70,10 +113,20 @@ The change from gender_equality_index to v2x_egaldem has provided a stronger cou
 
 ```{r}
 # STEP 3: Add Country-Level Predictors (Level 2)
-model2 <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation +
-                 rainbow_score_2019 + v2x_egaldem + (1|country_name), 
+model2 <- glmer(qc19 ~ age_z + gender + religion_z + political_ideology_z + lgb_friends + trans_friends +       respondent_cooperation_z +
+                 rainbow_score_z + v2x_egaldem_z + (1|country_name), 
+               family = "binomial", 
+               control = control,
                data = df_reduced)
 summary(model2)
+
+# compare with the previous two models
+modelsummary(
+  list("Model 1" = null_model, 
+       "Model 2" = model1,
+       "Model 3" = model2),
+  stars = TRUE,
+  gof_map = c("nobs", "aic", "bic", "logLik", "r.squared"))
 ```
 
 ## 4. Random slopes for individual-level predictors
@@ -85,18 +138,21 @@ The significant random slope suggests that we should proceed with examining cros
 ```{r}
 # STEP 4: Add Random Slopes for Individual-Level Predictors
 # Let's add random slopes for lgb_friends which has shown a strong effect
-model3 <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation + 
-                rainbow_score_2019 + v2x_egaldem + 
+model3 <- glmer(qc19 ~ age_z + gender + religion_z + political_ideology_z + lgb_friends + trans_friends + respondent_cooperation_z + 
+                rainbow_score_z + v2x_egaldem_z + 
                 (1 + lgb_friends|country_name), 
+               family = "binomial", 
                data = df_reduced)
 summary(model3)
 
-# Check if the random slope is significant
-ranova(model3)
-summary(model3)
-
-# Check if the random slope is significant
-ranova(model3)
+# compare with previous three models
+modelsummary(
+  list("Model 1" = null_model, 
+       "Model 2" = model1,
+       "Model 3" = model2,
+       "Model 4" = model3),
+  stars = TRUE,
+  gof_map = c("nobs", "aic", "bic", "logLik", "r.squared"))
 ```
 
 ## 5. Cross-level interactions
@@ -107,20 +163,31 @@ Neither interaction term (lgb_friends with rainbow_score_2019 or with v2x_egalde
 # STEP 5: Add Cross-Level Interactions
 # Assuming the random slope for lgb_friends is significant
 # We'll test cross-level interactions with both country-level predictors
-model4a <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation + 
-                rainbow_score_2019 + v2x_egaldem + 
-                lgb_friends:rainbow_score_2019 +
+model4a <- glmer(qc19 ~ age_z + gender + religion_z + political_ideology_z + lgb_friends + trans_friends + respondent_cooperation_z + 
+                rainbow_score_z + v2x_egaldem_z + 
+                lgb_friends:rainbow_score_z +
                 (1 + lgb_friends|country_name), 
-               data = df_reduced)
+               family = "binomial", data = df_reduced)
 summary(model4a)
 
 # Alternative interaction with v2x_egaldem
-model4b <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation + 
-                rainbow_score_2019 + v2x_egaldem + 
-                lgb_friends:v2x_egaldem +
+model4b <- lmer(qc19 ~ age_z + gender + religion_z + political_ideology_z + lgb_friends + trans_friends + respondent_cooperation_z + 
+                rainbow_score_z+ v2x_egaldem_z + 
+                lgb_friends:v2x_egaldem_z +
                 (1 + lgb_friends|country_name), 
                data = df_reduced)
 summary(model4b)
+
+# compare with previous models
+modelsummary(
+  list("Model 1" = null_model, 
+       "Model 2" = model1,
+       "Model 3" = model2,
+       "Model 4" = model3,
+       "Model 5a" = model4a,
+       "Model 5b" = model4b),
+  stars = TRUE,
+  gof_map = c("nobs", "aic", "bic", "logLik", "r.squared"))
 ```
 
 ## 6. Compare models
