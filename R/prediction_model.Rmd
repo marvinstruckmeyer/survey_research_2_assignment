@@ -3,6 +3,7 @@ title: "Prediction Model"
 author: "Phong, Marvin, Isabel"
 date: "2025-03-08"
 output: html_document
+---W
 ---
 
 ```{r setup, include=FALSE}
@@ -30,8 +31,21 @@ library(lme4)
 # Data
 
 ```{r}
-data <- read_rds("../df_rf_enriched.rds")
+# data_original <- haven::read_dta("../data/raw/ZA7575.dta")
+# data <- read_rds("../df_rf_enriched_new.rds") %>% 
+#   mutate(qa5b_12 = ifelse(is.na(qa5b_12), 12,qa5b_12)) %>% 
+#   select(-1)
+# 
+# data$qc19 <- as.factor(data_original$qc19)
+# 
+# data <- data %>% 
+#   mutate(qc19 = ifelse(qc19 == 3, NA, qc19)) %>% 
+#   drop_na(qc19)
+
+data <- read_rds("data_for_ML.rds")
 ```
+
+Data for training ML is created by imputing questions with "DK" or missing answers. For qa5b specifically, the data is imputed with 12 since respondent's answer as 12 or 13 for qa5a automatically skip question qa5b. Data is then dropped for rows with "DK" answers in qc19.
 
 # Train Model
 
@@ -75,9 +89,35 @@ corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 
 ### Lasso Dimension Reduction
 
-`{# {r} # set.seed(5472) # # 10-fold cross-validation to select lambda # lambdas <- 10^seq(-3,5, length.out=100) #  # # Matrix of predictors # X <- train %>% select(-qc19) %>% as.matrix() # y <- train %>% select(qc19) %>% scale(center=TRUE, scale=FALSE) %>% as.matrix() #  # # Lasso with Cross-validation # lasso <- cv.glmnet(X,  y,  #                    alpha = 1, lambda = lambdas, #                    standardize = TRUE, nfolds = 10) #  # # Plot cv results # plot(lasso)`
+```{r}
+# set.seed(5472) 
+# 10-fold cross-validation to select lambda 
+# lambdas <- 10^seq(-3,5, length.out=100) 
 
-`{# {r} # # Best cv lambda # lambda_cv <- lasso$lambda.min #  # # Fit final model # model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE) # y_hat_cv <- predict(model_cv, X) # ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv) #  # # Check R-squared # rsq_lasso_cv <- cor(y, y_hat_cv)^2 # rsq_lasso_cv`
+#Matrix of predictors
+X <- train %>% select(-qc19) %>% as.matrix()
+y <- train %>% 
+  select(qc19) %>% 
+  mutate(qc19 = as.numeric(qc19)) %>% 
+  scale(center=TRUE, scale=FALSE) %>% 
+  as.matrix()
+
+# Lasso with Cross-validation 
+# lasso <- cv.glmnet(X,  y,  
+#                    alpha = 1, lambda = lambdas, 
+#                    standardize = TRUE, nfolds = 10) 
+# Plot cv results 
+# plot(lasso)`
+```
+
+```{r}
+# Best cv lambda 
+# lambda_cv <- lasso$lambda.min
+# Fit final model 
+# model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE) 
+# y_hat_cv <- predict(model_cv, X) # ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv) #  # # Check R-squared # rsq_lasso_cv <- cor(y, y_hat_cv)^2 
+# rsq_lasso_cv
+```
 
 ```{r}
 # lasso_coefs <- coef(model_cv)
@@ -93,31 +133,37 @@ set.seed(3244)
 # Training control
 ctrl <- trainControl(method = "repeatedcv",
                      number=5,
-                     repeats = 5,
+                     repeats = 3,
                      search = "random",
                      verboseIter = TRUE)
 # Train model
 enet <- train(qc19 ~., data = train, method="glmnet",
               ppreProcess = c("center", "scale"),
-              tuneLength = 15, 
+              tuneLength = 10, 
               trControl = ctrl)
-
+saveRDS(enet, "regularization/elasticNet.rds")
 # Check R-Squared
 y_hat_enet <- predict(enet, select(train, -qc19))
-rsq_enet <- cor(y, y_hat_enet)^2
+rsq_enet <- cor(y, as.numeric(y_hat_enet))^2
 rsq_enet
 ```
 
 ```{r}
 # Columns with coef = 0
 enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>% 
-  as.matrix() %>% 
-  data.frame() 
+  unlist() 
 
+coef_matrix <- cbind(
+  as.matrix(enet_coefs[[1]]),
+  as.matrix(enet_coefs[[2]]),
+  as.matrix(enet_coefs[[3]])
+)
+  
 select_features_enet <- enet_coefs %>% 
   filter(s1 != 0) %>% 
   row.names() %>% 
   .[-1]
+
 select_features_enet
 ```
 
