@@ -43,6 +43,7 @@ library(lme4)
 #   drop_na(qc19)
 
 data <- read_rds("data_for_ML.rds")
+data$qc19 <- as.factor(data$qc19)
 ```
 
 Data for training ML is created by imputing questions with "DK" or missing answers. For qa5b specifically, the data is imputed with 12 since respondent's answer as 12 or 13 for qa5a automatically skip question qa5b. Data is then dropped for rows with "DK" answers in qc19.
@@ -98,8 +99,8 @@ corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 # X <- train %>% select(-qc19) %>% as.matrix()
 y <- train %>% 
   select(qc19) %>% 
-  mutate(qc19 = as.numeric(qc19)) %>% 
-  scale(center=TRUE, scale=FALSE) %>% 
+  # mutate(qc19 = as.numeric(qc19)) %>% 
+  # scale(center=TRUE, scale=FALSE) %>% 
   as.matrix()
 
 # Lasso with Cross-validation 
