@@ -142,10 +142,8 @@ enet <- train(qc19 ~., data = train, method="glmnet",
               tuneLength = 10, 
               trControl = ctrl)
 saveRDS(enet, "regularization/elasticNet.rds")
-# Check R-Squared
-y_hat_enet <- predict(enet, select(train, -qc19))
-rsq_enet <- cor(y, as.numeric(y_hat_enet))^2
-rsq_enet
+# Check Accuracy
+confusionMatrix(y_hat_enet, as.factor(y))
 ```
 
 ```{r}
