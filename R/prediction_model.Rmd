@@ -307,11 +307,24 @@ bwplot(results_train, scales = list(x = list(relation = "free"), y = list(relati
 test <- test %>% 
   mutate(qc19 = as.factor(qc19))
 
-p_rf_eu <- predict(rf_enet_under, test) 
-p_rf_eo <- predict(rf_enet_over, test)
+# Random Forest
+p_rf_u <- predict(rf_under, test) 
+p_rf_o <- predict(rf_over, test)
+# p_rf_s <- predict(rf_smote, test)
 
-confusionMatrix(p_rf_eu, test$qc19)$overall[1:2]
-confusionMatrix(p_rf_eo, test$qc19)$overall[1:2]
+# Gradient Boosting Machines
+p_gbm_u <- predict(gbm_under, test) 
+p_gbm_o <- predict(gbm_over, test)
+p_gbm_s <- predict(gbm_smote, test)
+
+# Support Vector Machine
+p_svm_u <- predict(svm_under, test) 
+# p_svm_o <- predict(svm_over, test)
+# p_svm_s <- predict(svm_smote, test)
+
+
+confusionMatrix(p_rf_u, test$qc19)$overall[1:2]
+confusionMatrix(p_rf_o, test$qc19)$overall[1:2]
 ```
 
 ### Country Level
