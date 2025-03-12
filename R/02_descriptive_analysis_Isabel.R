@@ -1,192 +1,148 @@
-# Essential EDA for Survey Data
-library(tidyverse)
-library(naniar)     # For missing data visualization
-library(GGally)     # For correlation matrix
-library(scales)     # For percentage scales
-library(viridis)    # For colorblind-friendly palettes
+###############################################################################
+# ALL-IN-ONE CODE: 4 BLOCKS (DEMOGRAPHICS, PERSONAL IDENTITY, DISCRIMINATION, PARADATA)
+###############################################################################
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(corrr)
 
-# Load the data
-df <- readRDS("df_reduced.rds")
+# 1) Define your variable blocks ----------------------------------------------
+#    Feel free to rename or move variables to the block you prefer. 
+#    We're assuming these columns exist in df_reduced.
 
-# Filter to just individual-level variables
-individual_vars <- df %>%
-  select(
-    # target variable
-    qc19,
-    
-    # individual demographics
-    d11, d10, d8, d8r2, d15a, d25, d60, d63,
-    
-    # values and identity
-    sd3, d1, sd2_5,
-    qc15_1, qc15_2, qc15_3,
-    qc6_10, qc6_10r,
-    qc12_10, qc12_10r,
-    qc13_10, qc13_10r,
-    sd1_4, sd1_5, sd1_7, sd1_8,
-    qc18_1, qc18_2, qc18_3,
-    
-    # discrimination perceptions
-    qc1_4, qc1_7, qc1_8, qc1_9, qc1_10,
-    qc2_4, qc2_5, qc2_6, qc2_7,
-    
-    # paradata
-    p1, p2, p3, p3r, p4, p5,
-    
-    # keep country identifiers for reference
-    country, country_name, isocntry
-  )
-
-# Add target variable labels
-individual_vars <- individual_vars %>%
-  mutate(qc19_label = case_when(
-    qc19 == 1 ~ "Yes",
-    qc19 == 2 ~ "No",
-    qc19 == 3 ~ "Don't Know",
-    TRUE ~ NA_character_
-  ))
-
-# Basic dimensions
-dim(individual_vars)
-
-## Descriptive analysis and preprocessing
-
-### Check feature distributions
-# Plot histograms of key variables
-key_vars <- c("qc19", "d11", "d8", "d1", "qc15_1", "sd1_4")
-
-df_long <- individual_vars %>% 
-  select(all_of(key_vars)) %>%
-  pivot_longer(cols = everything(), names_to = "feature", values_to = "value")
-
-ggplot(df_long, aes(x = value)) +
-  geom_histogram(bins = 30, fill = "steelblue", alpha = 0.7) +
-  facet_wrap(~feature, scales = "free") +
-  theme_minimal() +
-  labs(title = "Distribution of Key Features")
-
-### Target variable distribution
-ggplot(individual_vars, aes(x = qc19_label)) +
-  geom_bar(fill = "steelblue") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = -0.5) +
-  theme_minimal() +
-  labs(title = "Distribution of Target Variable (qc19)",
-       x = NULL,
-       y = "Count")
-
-### Key demographics by target variable
-# Age and target (filtered to remove special codes)
-ggplot(individual_vars %>% filter(d11 < 99), 
-       aes(x = qc19_label, y = d11)) +
-  geom_boxplot(fill = "steelblue", alpha = 0.7) +
-  theme_minimal() +
-  labs(title = "Age Distribution by Target Response",
-       x = "Response",
-       y = "Age (d11)")
-
-# Education and target
-ggplot(individual_vars, aes(x = factor(d8), fill = qc19_label)) +
-  geom_bar(position = "fill") +
-  scale_fill_viridis_d() +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
-  labs(title = "Target Variable by Education Level",
-       x = "Education Code (d8)",
-       y = "Proportion",
-       fill = "Response") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-### Values and identity factors
-# Political ideology and target (filtered to remove special codes)
-ggplot(individual_vars %>% filter(d1 < 98), 
-       aes(x = factor(d1), fill = qc19_label)) +
-  geom_bar(position = "fill") +
-  scale_fill_viridis_d() +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
-  labs(title = "Target Variable by Political Ideology",
-       x = "Political Ideology Code (d1)",
-       y = "Proportion",
-       fill = "Response") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-### LGBT-specific factors
-# Having LGBT friends and target
-ggplot(individual_vars, aes(x = factor(sd1_4), fill = qc19_label)) +
-  geom_bar(position = "fill") +
-  scale_fill_viridis_d() +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
-  labs(title = "Target Variable by Having LGBT Friends",
-       x = "Has LGBT Friends Code (sd1_4)",
-       y = "Proportion",
-       fill = "Response")
-
-# Support for LGBT rights and target
-ggplot(individual_vars, aes(x = factor(qc15_1), fill = qc19_label)) +
-  geom_bar(position = "fill") +
-  scale_fill_viridis_d() +
-  scale_y_continuous(labels = percent) +
-  theme_minimal() +
-  labs(title = "Target Variable by LGBT Rights Support",
-       x = "Support Level Code (qc15_1)",
-       y = "Proportion",
-       fill = "Response")
-
-### Geographic factors
-# Target variable across countries (top 10 by sample size)
-top_countries <- individual_vars %>%
-  count(country_name) %>%
-  top_n(10, n) %>%
-  pull(country_name)
-
-individual_vars %>%
-  filter(country_name %in% top_countries) %>%
-  ggplot(aes(x = reorder(country_name, qc19, FUN = function(x) mean(x == 1)), 
-             fill = qc19_label)) +
-  geom_bar(position = "fill") +
-  scale_fill_viridis_d() +
-  scale_y_continuous(labels = percent) +
-  coord_flip() +
-  theme_minimal() +
-  labs(title = "Target Variable by Country",
-       subtitle = "Top 10 countries by sample size",
-       x = NULL,
-       y = "Proportion",
-       fill = "Response")
-
-### Check correlation
-# Select numerical variables and filter out special codes
-numeric_vars <- individual_vars %>%
-  select(qc19, d11, d8, d25, d60, d63, sd3, d1, 
-         qc15_1, qc15_2, qc15_3, qc6_10, qc12_10, qc13_10, sd1_4) %>%
-  filter(d1 < 98, d11 < 99)
-
-# Create correlation matrix
-ggcorr(numeric_vars, label = TRUE, label_size = 3, hjust = 0.8) +
-  labs(title = "Correlation Matrix of Key Variables") +
-  theme(title = element_text(size = 14))
-
-### Identify key predictors
-# Calculate correlations with target
-correlations <- cor(numeric_vars$qc19, numeric_vars, use = "pairwise.complete.obs")
-cor_df <- data.frame(
-  variable = colnames(numeric_vars),
-  correlation = as.numeric(correlations)
+# 1A) Demographics block (example variables)
+block_demographics <- c(
+  "age", "gender", "education", "d8r2",
+  "occupation", "urban_rural", "financial_insecurity",
+  "social_class", "religion", "political_ideology",
+  "lgb_friends", "trans_friends"
 )
 
-# Plot top correlations
-ggplot(cor_df %>% 
-         filter(variable != "qc19") %>% 
-         top_n(10, abs(correlation)),
-       aes(x = reorder(variable, abs(correlation)), y = correlation)) +
-  geom_col(aes(fill = correlation > 0)) +
-  scale_fill_manual(values = c("firebrick", "steelblue"),
-                    labels = c("Negative", "Positive")) +
-  coord_flip() +
-  theme_minimal() +
-  labs(title = "Top Correlations with Target Variable",
-       subtitle = "Key predictors for modeling",
-       x = NULL,
-       y = "Correlation Coefficient",
-       fill = "Direction")
+# 1B) Personal Identity
+block_personal_identity <- c(
+  "ethnic_minority", "skin_color_minority", "religious_minority",
+  "sexual_lgbt_minority", "disability_minority", "other_minority", "none_minority"
+)
+
+# 1C) Discrimination
+block_discrimination <- c(
+  "trans_discrimination_country", "trans_discrimination_personal",
+  "trans_discrimination_workplace", "trans_discrimination_political",
+  "country_discrimination_efforts", "country_discrimination_efforts_recoded",
+  "trans_workplace_diversity", "trans_colleague", "trans_colleague_recoded",
+  "trans_child_relationship", "trans_child_relationship_recoded",
+  "lgb_rights", "same_sex_relationship", "same_sex_marriage",
+  "lgb_school_materials", "trans_school_materials", "intersex_school_materials",
+  "two_men_public_affection", "two_men_public_affection_recoded",
+  "two_women_public_affection", "two_women_public_affection_recoded",
+  "non_gendered_docs"
+)
+
+# 1D) Paradata
+block_paradata <- c(
+  "interview_date",
+  "interview_start_time",
+  "interview_duration",
+  "interview_duration_recoded",
+  "people_present_during_interview",
+  "respondent_cooperation"
+)
+
+# We'll assume qc19 is your primary outcome of interest
+outcome_var <- "qc19"
+
+# 2) Define a helper function to plot correlations with qc19 ------------------
+plot_corr_with_qc19 <- function(data, vars_block, outcome = "qc19", block_title = "Block") {
+  
+  # Subset the data to these variables + outcome
+  needed_vars <- c(outcome, vars_block)
+  df_block <- data[, needed_vars, drop = FALSE]
+  
+  # Keep only numeric columns
+  df_block_num <- df_block %>%
+    dplyr::select(where(is.numeric))
+  
+  # Ensure outcome is present and numeric
+  stopifnot(outcome %in% names(df_block_num))
+  
+  # Identify the other numeric vars
+  other_vars <- setdiff(names(df_block_num), outcome)
+  
+  # Compute correlation with outcome
+  cor_df <- data.frame(
+    variable = other_vars,
+    correlation = sapply(other_vars, function(v) {
+      cor(df_block_num[[v]], df_block_num[[outcome]], use = "complete.obs")
+    })
+  )
+  
+  # Sort by absolute correlation
+  cor_df <- cor_df %>% arrange(desc(abs(correlation)))
+  
+  # Reorder factor levels so negative correlations plot at bottom
+  cor_df <- cor_df %>%
+    arrange(correlation) %>%
+    mutate(variable = factor(variable, levels = variable))
+  
+  # Plot horizontal bar chart
+  ggplot(cor_df, aes(x = variable, y = correlation)) +
+    geom_col(fill = "#4682B4", width = 0.6) +
+    geom_text(
+      aes(label = sprintf("%.2f", correlation)),
+      hjust = ifelse(cor_df$correlation >= 0, -0.1, 1.1),
+      color = "black", size = 3.5
+    ) +
+    coord_flip() +
+    scale_y_continuous(
+      limits = c(
+        min(cor_df$correlation) - 0.1,
+        max(cor_df$correlation) + 0.1
+      )
+    ) +
+    labs(
+      title = paste0(block_title, ": Correlation with ", outcome),
+      x = NULL,
+      y = "Correlation"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+      axis.text.y = element_text(size = 10),
+      axis.text.x = element_text(size = 9),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor = element_blank()
+    )
+}
+
+# 3) Generate bar charts for each block ---------------------------------------
+#    We'll assume the main data frame is called df_reduced
+
+# 3A) Demographics
+plot_corr_with_qc19(df_reduced, block_demographics, outcome_var, "DEMOGRAPHICS")
+
+# 3B) Personal Identity
+plot_corr_with_qc19(df_reduced, block_personal_identity, outcome_var, "PERSONAL IDENTITY")
+
+# 3C) Discrimination
+plot_corr_with_qc19(df_reduced, block_discrimination, outcome_var, "DISCRIMINATION")
+
+# 3D) Paradata
+plot_corr_with_qc19(df_reduced, block_paradata, outcome_var, "PARADATA")
+
+
+library(dplyr)
+library(corrr)
+
+# 1) Keep only numeric columns
+df_reduced_numeric <- df_reduced %>%
+  select_if(is.numeric)
+
+# 2) Correlate the numeric columns
+cor_df <- correlate(df_reduced_numeric)
+
+# 3) Stretch into a long format, then filter by your threshold
+high_cor_pairs <- cor_df %>%
+  stretch() %>%
+  filter(abs(r) > 0.5, x != y)  # pick threshold, exclude self-correlations
+
+high_cor_pairs
