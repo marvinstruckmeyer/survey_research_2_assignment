@@ -95,7 +95,7 @@ corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 # lambdas <- 10^seq(-3,5, length.out=100) 
 
 #Matrix of predictors
-X <- train %>% select(-qc19) %>% as.matrix()
+# X <- train %>% select(-qc19) %>% as.matrix()
 y <- train %>% 
   select(qc19) %>% 
   mutate(qc19 = as.numeric(qc19)) %>% 
@@ -131,9 +131,8 @@ y <- train %>%
 ```{r message = FALSE}
 set.seed(3244)
 # Training control
-ctrl <- trainControl(method = "repeatedcv",
+ctrl <- trainControl(method = "cv",
                      number=5,
-                     repeats = 3,
                      search = "random",
                      verboseIter = TRUE)
 # Train model
