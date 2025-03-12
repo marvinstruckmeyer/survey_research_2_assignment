@@ -75,43 +75,43 @@ corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 
 ### Lasso Dimension Reduction
 
-```{r}
-set.seed(5472)
-# 10-fold cross-validation to select lambda
-lambdas <- 10^seq(-3,5, length.out=100)
+```{# {r}
+# set.seed(5472)
+# # 10-fold cross-validation to select lambda
+# lambdas <- 10^seq(-3,5, length.out=100)
+# 
+# # Matrix of predictors
+# X <- train %>% select(-qc19) %>% as.matrix()
+# y <- train %>% select(qc19) %>% scale(center=TRUE, scale=FALSE) %>% as.matrix()
+# 
+# # Lasso with Cross-validation
+# lasso <- cv.glmnet(X,  y, 
+#                    alpha = 1, lambda = lambdas,
+#                    standardize = TRUE, nfolds = 10)
+# 
+# # Plot cv results
+# plot(lasso)
+```
 
-# Matrix of predictors
-X <- train %>% select(-qc19) %>% as.matrix()
-y <- train %>% select(qc19) %>% scale(center=TRUE, scale=FALSE) %>% as.matrix()
-
-# Lasso with Cross-validation
-lasso <- cv.glmnet(X,  y, 
-                   alpha = 1, lambda = lambdas,
-                   standardize = TRUE, nfolds = 10)
-
-# Plot cv results
-plot(lasso)
+```{# {r}
+# # Best cv lambda
+# lambda_cv <- lasso$lambda.min
+# 
+# # Fit final model
+# model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE)
+# y_hat_cv <- predict(model_cv, X)
+# ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv)
+# 
+# # Check R-squared
+# rsq_lasso_cv <- cor(y, y_hat_cv)^2
+# rsq_lasso_cv
 ```
 
 ```{r}
-# Best cv lambda
-lambda_cv <- lasso$lambda.min
-
-# Fit final model
-model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE)
-y_hat_cv <- predict(model_cv, X)
-ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv)
-
-# Check R-squared
-rsq_lasso_cv <- cor(y, y_hat_cv)^2
-rsq_lasso_cv
-```
-
-```{r}
-lasso_coefs <- coef(model_cv)
-
-select_features_lasso <- rownames(lasso_coefs)[coefs[,1] != 0][-1]
-select_features_lasso
+# lasso_coefs <- coef(model_cv)
+# 
+# select_features_lasso <- rownames(lasso_coefs)[coefs[,1] != 0][-1]
+# select_features_lasso
 ```
 
 ### Elastic Net Dimension Reduction
@@ -151,9 +151,9 @@ select_features_enet
 
 ## Feature Selection
 
-```{r}
-train_lasso <- train %>% 
-  select(all_of(c(select_features_lasso, "qc19")))
+```{# {r}
+# train_lasso <- train %>% 
+#   select(all_of(c(select_features_lasso, "qc19")))
 
 # Mapping enet
 select <- c()
@@ -291,8 +291,22 @@ saveRDS(svm_enet_smote, file = "models/svm_enet_smote.rds")
 ## Performance Evaluation on Training Data
 
 ```{r}
-rf_enet_under <- read_rds("models/rf_enet_under.rds")
-rf_enet_over <- read_rds("models/rf_enet_upper.rds")
+# Random Forest
+rf_under <- read_rds("models/rf_enet_under.rds")
+rf_over <- read_rds("models/rf_enet_upper.rds")
+# rf_smote <- read_rds("models/rf_enet_smote.rds")
+
+# Gradient Boosting Machines
+gbm_under <- read_rds("models/gbm_enet_under.rds")
+gbm_over <- read_rds("models/gbm_enet_upper.rds")
+gbm_smote <- read_rds("models/gbm_enet_smote.rds")
+
+
+# Support Vector Machine
+svm_under <- read_rds("models/svm_enet_under.rds")
+# svm_over <- read_rds("models/svm_enet_upper.rds")
+# svm_smote <- read_rds("models/svm_enet_smote.rds")
+
 
 results_train <- resamples(list(rf_eu = rf_enet_under,
                rf_eo = rf_enet_over))  
