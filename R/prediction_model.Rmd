@@ -75,37 +75,9 @@ corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 
 ### Lasso Dimension Reduction
 
-```{# {r}
-# set.seed(5472)
-# # 10-fold cross-validation to select lambda
-# lambdas <- 10^seq(-3,5, length.out=100)
-# 
-# # Matrix of predictors
-# X <- train %>% select(-qc19) %>% as.matrix()
-# y <- train %>% select(qc19) %>% scale(center=TRUE, scale=FALSE) %>% as.matrix()
-# 
-# # Lasso with Cross-validation
-# lasso <- cv.glmnet(X,  y, 
-#                    alpha = 1, lambda = lambdas,
-#                    standardize = TRUE, nfolds = 10)
-# 
-# # Plot cv results
-# plot(lasso)
-```
+`{# {r} # set.seed(5472) # # 10-fold cross-validation to select lambda # lambdas <- 10^seq(-3,5, length.out=100) #  # # Matrix of predictors # X <- train %>% select(-qc19) %>% as.matrix() # y <- train %>% select(qc19) %>% scale(center=TRUE, scale=FALSE) %>% as.matrix() #  # # Lasso with Cross-validation # lasso <- cv.glmnet(X,  y,  #                    alpha = 1, lambda = lambdas, #                    standardize = TRUE, nfolds = 10) #  # # Plot cv results # plot(lasso)`
 
-```{# {r}
-# # Best cv lambda
-# lambda_cv <- lasso$lambda.min
-# 
-# # Fit final model
-# model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE)
-# y_hat_cv <- predict(model_cv, X)
-# ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv)
-# 
-# # Check R-squared
-# rsq_lasso_cv <- cor(y, y_hat_cv)^2
-# rsq_lasso_cv
-```
+`{# {r} # # Best cv lambda # lambda_cv <- lasso$lambda.min #  # # Fit final model # model_cv <- glmnet(X, y, alpha = 1, lambda = lambda_cv, standardize = TRUE) # y_hat_cv <- predict(model_cv, X) # ssr_cv <- t(y-y_hat_cv) %*% (y - y_hat_cv) #  # # Check R-squared # rsq_lasso_cv <- cor(y, y_hat_cv)^2 # rsq_lasso_cv`
 
 ```{r}
 # lasso_coefs <- coef(model_cv)
@@ -151,7 +123,7 @@ select_features_enet
 
 ## Feature Selection
 
-```{# {r}
+```{r}
 # train_lasso <- train %>% 
 #   select(all_of(c(select_features_lasso, "qc19")))
 
@@ -308,8 +280,18 @@ svm_under <- read_rds("models/svm_enet_under.rds")
 # svm_smote <- read_rds("models/svm_enet_smote.rds")
 
 
-results_train <- resamples(list(rf_eu = rf_enet_under,
-               rf_eo = rf_enet_over))  
+results_train <- resamples(list(
+  rf_u = rf_under,
+  rf_o = rf_over,
+  # rf_s =  rf_smote,
+  gbm_u = gbm_under,
+  gbm_o = gbm_over,
+  gbm_s = gbm_smote,
+  # svm_o = svm_over,
+  # svm_s = svm_smote,
+  svm_u = svm_under
+  ))  
+
 summary(results_train)
 ```
 
