@@ -1,0 +1,96 @@
+---
+title: "Model_explanation"
+output: html_document
+date: "2025-03-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load libraries
+
+```{r}
+library(lme4)      # For multilevel modeling
+library(lmerTest)  # For p-values in multilevel models
+library(ggplot2)   # For data visualization
+library(dplyr)     # For data manipulation
+library(sjstats)   # For calculating ICC
+library(sjPlot)    # For plotting model results
+
+# Quick data check
+table(df_reduced$country_name)
+```
+
+### Visualize qc19 by country
+
+```{r}
+country_means <- aggregate(qc19 ~ country_name, data = df_reduced, FUN = mean)
+country_means <- country_means[order(country_means$qc19), ]
+
+ggplot(country_means, aes(x = reorder(country_name, qc19), y = qc19)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Average qc19 by Country",
+       x = "Country",
+       y = "Mean qc19") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+## 1. Null model (intercept only)
+
+There is significant variation in qc19 scores between countries, justifying the need for a multilevel approach. About 12% of the differences in qc19 scores can be attributed to country-level factors, while 88% is due to individual differences.
+
+```{r}
+# STEP 1: Null Model (Intercept-only model)
+null_model <- lmer(qc19 ~ 1 + (1|country_name), data = df_reduced)
+summary(null_model)
+
+# Calculate ICC
+performance::icc(null_model)
+```
+
+## 2. Individual-level predictors (level 1)
+
+Individual characteristics and interview quality (respondent cooperation) significantly predict qc19 scores. The strongest predictors are having LGB friends and respondent cooperation. Religion has a negative impact, suggesting that more religious individuals tend to have lower qc19 scores. Even after controlling for these individual factors, significant country-level differences remain.
+
+```{r}
+# STEP 2: Add Individual-Level Predictors (Level 1)
+# starting with predictors that showed correlation with qc19
+model1 <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation + (1|country_name), 
+               data = df_reduced)
+summary(model1)
+```
+
+## 3. Country-level predictors (level 2)
+
+Country-level factors, particularly those related to LGBTQ+ rights (rainbow score) and egalitarian democracy, strongly explain why qc19 scores differ between countries. The negative relationships suggest that more progressive and egalitarian countries tend to have lower qc19 scores. These two country-level variables explain a remarkably large portion (74.5%) of the between-country differences.
+
+The change from gender_equality_index to v2x_egaldem has provided a stronger country-level effect, suggesting that broader measures of egalitarianism in a society may be more relevant to explaining variation in qc19 than gender equality specifically.
+
+```{r}
+# STEP 3: Add Country-Level Predictors (Level 2)
+model2 <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation +
+                 rainbow_score_2019 + v2x_egaldem + (1|country_name), 
+               data = df_reduced)
+summary(model2)
+```
+
+## 4.
+
+```{r}
+# STEP 4: Add Random Slopes for Individual-Level Predictors
+# Let's add random slopes for lgb_friends which has shown a strong effect
+model3 <- lmer(qc19 ~ age + gender + religion + political_ideology + lgb_friends + trans_friends + respondent_cooperation + 
+                rainbow_score_2019 + v2x_egaldem + 
+                (1 + lgb_friends|country_name), 
+               data = df_reduced)
+summary(model3)
+
+# Check if the random slope is significant
+ranova(model3)
+summary(model3)
+
+# Check if the random slope is significant
+ranova(model3)
+```
