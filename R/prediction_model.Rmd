@@ -249,7 +249,7 @@ gbm_enet_smote <- train(
 saveRDS(gbm_enet_smote, file = "models/gbm_enet_smote.rds")
 ```
 
-### Support Vectoc Machine (SVM)
+### Support Vector Machine (SVM)
 
 ```{r}
 # enet
