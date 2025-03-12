@@ -1,37 +1,64 @@
-# Load the random forest library
+# Load required library
 library(randomForest)
 
-# Examine the target variable to determine if it should be treated as a factor
-print("Summary of target variable 'qc19':")
-print(summary(df_rf_enriched$qc19))
-print(paste("Number of unique values:", length(unique(df_rf_enriched$qc19))))
+# APPROACH 1: Correlation-based ranking (fastest)
+# Convert target to numeric if needed
+if(is.factor(df_rf_enriched$qc19)) {
+  qc19_numeric <- as.numeric(df_rf_enriched$qc19)
+} else {
+  qc19_numeric <- df_rf_enriched$qc19
+}
 
-# If qc19 has few unique values, treat it as a classification problem
-# Convert to factor for classification
-df_rf_enriched$qc19 <- as.factor(df_rf_enriched$qc19)
-print("Converting qc19 to factor for classification")
+# Calculate correlations with target
+correlations <- numeric(ncol(df_rf_enriched) - 1)
+var_names <- names(df_rf_enriched)[names(df_rf_enriched) != "qc19"]
 
-# Run the random forest model for classification
-rf_model <- randomForest(qc19 ~ ., data=df_rf_enriched, importance=TRUE)
+# Use a simple loop to avoid memory issues
+for(i in 1:length(var_names)) {
+  var <- var_names[i]
+  # Handle factors by converting to numeric
+  if(is.factor(df_rf_enriched[[var]]) || is.character(df_rf_enriched[[var]])) {
+    correlations[i] <- 0  # Skip factors/characters if memory is issue
+  } else {
+    # Use absolute correlation
+    correlations[i] <- abs(cor(qc19_numeric, df_rf_enriched[[var]], 
+                               use = "pairwise.complete.obs"))
+  }
+}
 
-# Print the model
-print(rf_model)
+# Create dataframe of results
+importance_df <- data.frame(
+  Variable = var_names,
+  Correlation = correlations
+)
 
-# Plot variable importance 
-# For classification, use MeanDecreaseGini (type=2) instead of %IncMSE
-varImpPlot(rf_model, type=2, pch=19, main="Variable Importance (Mean Decrease in Gini)")
+# Sort by correlation
+importance_df <- importance_df[order(importance_df$Correlation, decreasing = TRUE),]
 
-# If you want to see the top variables more clearly, you can sort them
-importance_df <- importance(rf_model)
-# For classification, we usually focus on MeanDecreaseGini
-sorted_importance <- importance_df[order(importance_df[,"MeanDecreaseGini"], decreasing=TRUE),]
-# Print top 10 most important variables
-print("Top 10 most important variables:")
-print(head(sorted_importance, 10))
+# Show top 20 variables by correlation
+print("Top 20 variables by correlation magnitude:")
+print(head(importance_df, 20))
 
-# You can also plot partial dependence plots for the most important variables
-# Example for top 3 variables (replace with your actual variable names)
-vars <- rownames(sorted_importance)[1:3]
-for(var in vars) {
-  partialPlot(rf_model, df_rf_enriched, var, lwd=2)
+# APPROACH 2: If you still want a small Random Forest (much simpler)
+# Take only top 30 variables by correlation and a sample of data
+if(nrow(df_rf_enriched) > 5000) {
+  # Use a small sample to keep it fast
+  set.seed(123)
+  sample_rows <- sample(1:nrow(df_rf_enriched), 5000)
+  df_sample <- df_rf_enriched[sample_rows, c("qc19", head(importance_df$Variable, 30))]
+  
+  # Convert target to factor for classification
+  df_sample$qc19 <- as.factor(df_sample$qc19)
+  
+  # Run a very small random forest 
+  rf_small <- randomForest(
+    qc19 ~ ., 
+    data = df_sample,
+    ntree = 50,  # Very small number of trees
+    importance = TRUE
+  )
+  
+  # Plot importance
+  print("Random Forest Variable Importance (on reduced dataset):")
+  varImpPlot(rf_small)
 }

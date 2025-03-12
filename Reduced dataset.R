@@ -1,3 +1,5 @@
+library(dplyr)
+library(readr)
 df_reduced <- df_rf_enriched %>%
   select(
     # target
@@ -58,19 +60,19 @@ df_reduced <- df_rf_enriched %>%
     rainbow_score_2019,      # LGBTI rights/protections
     gender_equality_index,   # Gender equality
     Happiness_Score,         # National well-being
-    v2x_libdem, Regime_type, # Democratic quality
-    
     gdp_2018,                # Economic development
     rainbow_score_2019,      # LGBTI rights/protections
     rainbow_score_2018,      # LGBTI rights/protections (previous year)
     rainbow_score_avg_2019_2018, # Average LGBTI rights/protections
     gender_equality_index,   # Gender equality
     Happiness_Score,         # National well-being
-    v2x_libdem, v2x_egaldem, Regime_type, # Democratic quality
+    v2x_libdem,              # Democratic quality
+    v2x_egaldem,             # Democratic quality
+    Regime_type,             # Democratic quality
+    z_functioning_of_government, #Govenment function measure
     composite_equality,     # Equality measure
     z_composite_equality,   # Standardized equality measure
     norm_composite_equality, # Normalized equality measure
-    lgbt_support,           # LGBT support measure
     z_lgbt_support,         # Standardized LGBT support
     norm_lgbt_support,      # Normalized LGBT support
     pct_friends_lgbt,       # Percentage of LGBT friends
