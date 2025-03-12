@@ -4,7 +4,7 @@ library(tidyr)
 library(readr)
 
 # load the data
-df_rf <- readRDS("R/df_rf.rds") # the imputed dataset
+df_rf_new <- read_csv("df_rf_new.csv") # the imputed dataset
 country_df_imputed <- readRDS("country_df_imputed.rds") # external dataset
 
 # custom function to calculate country-level aggregates
@@ -110,7 +110,7 @@ calculate_country_aggregates <- function(df) {
 }
 
 # apply the function
-country_aggregates <- calculate_country_aggregates(df_rf)
+country_aggregates <- calculate_country_aggregates(df_rf_new)
 
 # join 
 country_data_combined <- country_df_imputed %>%
@@ -145,12 +145,11 @@ saveRDS(country_data_combined, file = "country_data_combined.rds")
 write_csv(country_data_combined, "country_data_combined.csv")
 
 # join with df_rf; the actual, imputed survey data
-df_rf_enriched <- df_rf %>%
+df_rf_enriched_new <- df_rf_new %>%
   # ISO codes as key
   left_join(country_data_combined, by = c("isocntry" = "iso2"))
 
 # save final dataset
-saveRDS(df_rf_enriched, file = "df_rf_enriched.rds")
-write_csv(df_rf_enriched, "df_rf_enriched.csv")
+write_csv(df_rf_enriched_new, "df_rf_enriched_new.csv")
 
 
