@@ -183,7 +183,7 @@ data_correctly_coded <- data %>%
     
     qb7 = ifelse(qb7 == 5, NA, qb7),
     
-    #qc19 = ifelse(qc19 == 3, NA, qc19),
+    qc19 = ifelse(qc19 == 3, NA, qc19),
     
     qc20 = ifelse(qc20 == 3, NA, qc20),
     
@@ -324,23 +324,15 @@ data_correctly_coded <- data_correctly_coded %>%
     TRUE ~ isocntry))
 
 ###
-# reproducibility
+# run the imputation
 set.seed(1212)
 
-# Before running mice, create a predictor matrix
-pred_matrix <- make.predictorMatrix(data_correctly_coded)
-
-# Set qc19 to not be imputed (row for qc19 set to 0)
-pred_matrix["qc19", ] <- 0
-
-# run the imputation
 start_time <- Sys.time()
-imp_model_2 <- mice(data_correctly_coded, m = 3, method = 'rf', maxit = 3, 
-                  predictorMatrix = pred_matrix)
+imp_model <- mice(data_correctly_coded, m = 3, method = 'rf', maxit = 3)
 end_time <- Sys.time()
 end_time - start_time
 
-df_rf_new_2 <- complete(imp_model_2, action = 3)
+df_rf_new <- complete(imp_model, action = 3)
 
-write_rds(df_rf_new_2) 
+# write_rds(df_rf_new, "df_rf_new.rds")
 
