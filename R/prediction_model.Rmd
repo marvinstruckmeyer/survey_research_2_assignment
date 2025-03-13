@@ -370,7 +370,7 @@ p_list <- list(rf_u = p_rf_u,
             #rf_s = p_rf_s,
             gbm_u = p_gbm_u,
             gbm_o = p_gbm_o,
-            gbm_s = p_gbm_s,
+            gbm_s = p_gbm_s
             #svm_s = p_svm_s,
             #svm_o = p_svm_o,
             # svm_u = p_svm_u
@@ -386,8 +386,13 @@ for (i in 1:length(p_list)) {
   model <- names(p_list[i])
   pred <- p_list[i] %>% unlist()
   matrix <- confusionMatrix(pred, test$qc19)$overall[1:2]
-  
+ cMatrix <- rbind(cMatrix, c(model, matrix)) 
 }
+
+cMatrix <- cMatrix %>% 
+  drop_na()
+
+cMatrix %>% slice_max(Accuracy, n = 3)
 ```
 
 ### Country Level
