@@ -11,6 +11,7 @@ output: html_document
 library(tidyverse)
 library(readxl)
 library(ggplot2)
+library(haven)
 ```
 
 # Context
@@ -103,3 +104,33 @@ ggplot(compare_happiness, aes(x = support_ranking, y = happiness_ranking)) +
 ```
 
 ## Religiosity
+
+Related questions from survey:
+
+-   SD1 - Do you have friends or acquaintances who are ... ?
+
+    -   6 - of a different religion or have different beliefs than you
+
+-   **QC1** - For each of the following types of discrimination, could you please tell me whether, in your opinion, it is very widespread, fairly widespread, fairly rare or very rare in (OUR COUNTRY)? Discrimination on the basis of…
+
+    -   6 - Religion or beliefs
+
+-   **QC2** - In the past 12 months have you personally felt discriminated against or experienced harassment on one or more of the following grounds? Please tell me all that apply.
+
+    -   6 - Religion or beliefs
+
+-   QC6 - Using a scale from 1 to 10, please tell me how you would feel about having a person from each of the following groups in the highest elected political position in (OUR COUNTRY). '1' means that you would feel "not at all comfortable" and '10' that you would feel "totally comfortable".
+
+    -   9 - a person with a different religion than the majority
+
+-   **QC9** - Do you think that enough is being done to promote diversity in your work place as far as each of the following is concerned?
+
+    -   8 - Religion or beliefs
+
+-   **QC11** - Are you in favour or opposed to providing anonymous information about … as part of a census or statistical survey, if that could help to combat discrimination in (OUR COUNTRY)?
+
+    -   4 Your religion or beliefs
+
+-   **QC17** - To what extent do you agree or disagree with each of the following statements? School lessons and material should include information about diversity in terms of …
+
+    -   1 - Religion or beliefs
