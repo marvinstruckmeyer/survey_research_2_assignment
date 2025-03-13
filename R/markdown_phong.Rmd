@@ -13,15 +13,9 @@ library(readxl)
 library(ggplot2)
 ```
 
-# Cross-country Difference Analysis
+# Context
 
-Objectives:
-
--   Analyze the data to understand why support for transgender individuals obtaining official documents varies significantly between countries
-
--   Individual-level indicators complemented with country-level factors (e.g., cultural norms, legal frameworks. historical context, economic variables, societal attitudes towards LGBTI+ rights)
-
-## Context
+## Data
 
 ```{r}
 data <- read_dta("../data/raw/ZA7575.dta")
@@ -54,28 +48,7 @@ qc19 <- data %>%
   filter(qc19 == 1) 
 ```
 
-```{r}
-# rb_cat <- read_csv(file = "../data/2024-rainbow-map-data.csv", n_max = 2) %>% 
-#   select(-1,-2,-3) %>% 
-#   t(.) %>% 
-#   as.data.frame() %>% 
-#   rownames_to_column(var = "category") %>% 
-#   rename("criteria" = 2,
-#          "ranking_point" = 3) %>% 
-#   mutate(category = gsub("\\.\\.\\.\\d+", "", category),
-#          ranking_point = parse_number(gsub(",", ".", ranking_point))) 
-#   # separate(criteria, into = c("criteria", "group"), sep = "\\(") %>% 
-#   # mutate(group = gsub("\\)", "", group)) %>% 
-#   # mutate(group = ifelse(is.na(group), "General", group))
-# 
-# rb_data <- read_csv(file = "../data/2024-rainbow-map-data.csv", skip = 1) %>% 
-#   rename("country_code" = 1,
-#          "country" = 2,
-#          "ranking" = 3) %>% 
-#   drop_na(country) %>% 
-#   mutate(ranking = ranking/100)
-
-```
+## Happiness
 
 ```{r}
 happiness <- read_rds("../happiness_scores.rds")
@@ -129,18 +102,4 @@ ggplot(compare_happiness, aes(x = support_ranking, y = happiness_ranking)) +
   ylab("Happiness Ranking")
 ```
 
-# Predictive Model
-
-Objectives:
-
--   Develop a predictive model using ML techniques to forecast support levels based on observed trends
-
--   Ensure model's accuracy and reliability, rigorous calibration, and validation.
-
-## Relevant Features
-
-## Modeling Method
-
-## Model Training
-
-## Model Performance Evaluation
+## Religiosity
