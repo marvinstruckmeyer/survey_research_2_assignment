@@ -1,19 +1,20 @@
-### data cleaning
+### analyse non-response by studying correlations
+# helpful in evaluationg potential biases given that we might do CCA with regard
+# to qc19, i.e., code all 'DKs" as NAs and then delete all NAs
 
-library(tidyverse)
-library(sjlabelled)
 library(haven)
-library(mice)
+library(tidyverse)
+library(magrittr)
 
 data <- read_dta("data/raw/ZA7575.dta")
 
-### 
-# code the questions properly:
-# 'DK' and refusals are especially a problem for questions with ordinal variables, 
-# less so for non-ordinal variables; for reasons of completeness, we clean all of
-# the 'DK' and refusals (and some other special cases) by converting them to NAs
+# create dataset with non-response indicator
+non_numeric_vars <- c("qc19", "studyno1", "studyno2", "doi", "version",
+                      "edition", "survey", "caseid", "uniqid", "serialid",
+                      "tnscntry", "country")
 
-data_correctly_coded <- data %>%
+# use the data that is already correctly coded
+data_correctly_coded_nonresp_analysis <- data %>%
   mutate(
     # hard cases for me
     d72_1 = ifelse(d72_1 %in% c(5,6), NA, d72_1),
@@ -183,7 +184,7 @@ data_correctly_coded <- data %>%
     
     qb7 = ifelse(qb7 == 5, NA, qb7),
     
-    #qc19 = ifelse(qc19 == 3, NA, qc19),
+    qc19 = ifelse(qc19 == 3, NA, qc19),
     
     qc20 = ifelse(qc20 == 3, NA, qc20),
     
@@ -217,130 +218,86 @@ data_correctly_coded <- data %>%
     
     qc10 = ifelse(qc10 %in% c(9,10), NA, qc10))
 
-# write_rds(data_correctly_coded, file = "data_correctly_coded.rds")
+nonresp_analysis <- data_correctly_coded_nonresp_analysis %>% 
+  mutate(nonresponse = ifelse(is.na(qc19), 1, 0)) %>% 
+  select(-all_of(non_numeric_vars))
 
-
-###
-# get rid of all the "r" coded ones
-# for the questions with underscores, (1) if they are on a scale, e.g., 1-3 and 'DK'
-# is one of them, replace 'DK'; if it's 0-1 coding, keep that (can't do anything about it)
-
-data_correctly_coded <- data_correctly_coded %>%
-  select(-matches("_r$|_r[0-9]$|_r[0-9]_")) 
-# use setdiff() to check whether it's done properly 
-
-
-### 
-# now analyse the patterns of NAs across columns
-missing_data_before <- data_correctly_coded %>%
-  summarise(across(everything(), ~sum(is.na(.))/n())) %>%
-  pivot_longer(cols = everything(), 
-               names_to = "variable", 
-               values_to = "missing_proportion") %>%
-  arrange(desc(missing_proportion))
-
-# view top variables with missing data
-print(head(missing_data_before, 20))
-
-# viz
-ggplot(missing_data_before %>% filter(missing_proportion > 0.25), 
-       aes(x = reorder(variable, missing_proportion), y = missing_proportion)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +
-  labs(title = "Variables with >25% Missing Data",
-       x = "Variable",
-       y = "Proportion Missing") +
-  theme_minimal()
-
-# calculate overall proportion of missing data
-mean(missing_data_before$missing_proportion)
-
-# deeper analysis
-missing_by_prefix <- missing_data_before %>%
-  mutate(prefix = str_extract(variable, "^[a-z]+\\d+")) %>%
-  group_by(prefix) %>%
+## calculate correlations with target's NAs
+# start by comparing to countries
+nonresp_by_country <- nonresp_analysis %>% 
+  group_by(isocntry) %>% 
   summarise(
-    avg_missing = mean(missing_proportion),
-    n_vars = n(),
-    max_missing = max(missing_proportion),
-    min_missing = min(missing_proportion)
-  ) %>%
-  arrange(desc(avg_missing))
+    nonresp_count = sum(nonresponse),
+    total_resp = n(),
+    nonresp_pct = nonresp_count/total_resp*100)
 
-print(head(missing_by_prefix, 15))
+# visualize country variation
+ggplot(nonresp_by_country, 
+       aes(x = reorder(isocntry, -nonresp_pct), y = nonresp_pct)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Non-Response Rates by Country",
+    x = "Country Code",
+    y = "Non-Response Percentage")
 
-# we take out the following variables because (1) they exhibited high missingness
-# while at the same aren't super releveant (that's an assumption we make) for our
-# subsequent analysis
-data_correctly_coded <- data_correctly_coded %>%
-  select(
-    # Exclude variables with specific prefixes
-    -starts_with("p6"),   # Size of locality
-    -starts_with("p7"),   # Region
-    -starts_with("p13"),  # Language of interview
-    -starts_with("d40"),  # Household size
-    -starts_with("qa3"),  # Not benefitting from trade
-    -starts_with("qa15"), # Countries bought goods from
-    -starts_with("qa2"),  # Benefitting from trade
-    -starts_with("qb8"),  # EU energy label influence
-    -starts_with("qa18b"), # Information sources follow-up
-    -starts_with("qc3")   # Discrimination circumstances
-  )
+# identify likely categorical variables (those with few unique values)
+var_uniqueness <- sapply(nonresp_analysis, function(x) {
+  if(is.numeric(x)) {
+    length(unique(x))
+  } else {
+    NA
+  }
+})
 
-# check how much we imporved the missingness rate
-missing_data_after <- data_correctly_coded %>%
-  summarise(across(everything(), ~sum(is.na(.))/n())) %>%
-  pivot_longer(cols = everything(), 
-               names_to = "variable", 
-               values_to = "missing_proportion") %>%
-  arrange(desc(missing_proportion))
+# consider variables with 10 or fewer unique values as potential categorical variables
+likely_categorical <- names(var_uniqueness[!is.na(var_uniqueness) & var_uniqueness < 6])
+likely_categorical <- setdiff(likely_categorical, c("nonresponse", "qc19"))
 
-mean(missing_data_after$missing_proportion)
+# 
+chi_square_results <- data.frame(variable = character(), 
+                                 p_value = numeric(),
+                                 stringsAsFactors = FALSE)
 
-# prepare for imputation
-data_correctly_coded <-  data_correctly_coded %>%
-  mutate(isocntry = as.factor(isocntry)) %>%
-  # remove other problematic variables (like IDs) if needed
-  select(!any_of(c("doi", "version", "caseid", "uniqid", "serialid"))) %>%
-  sjlabelled::remove_all_labels()
-
-# delete variables with zero variance as they cannot ever be useful predictors
-var_zero <- data_correctly_coded %>% 
-  select(where(is.numeric)) %>%
-  summarise(across(everything(), var, na.rm = TRUE)) %>%
-  pivot_longer(everything(), names_to = "variable", values_to = "variance") %>%
-  filter(variance == 0 | is.na(variance))
-
-if(nrow(var_zero) > 0) {
-  cat("Removing", nrow(var_zero), "variables with zero variance\n")
-  data_correctly_coded <- data_correctly_coded %>%
-    select(!any_of(var_zero$variable))
+for (var in likely_categorical) {
+  # Create contingency table
+  cont_table <- table(nonresp_analysis$nonresponse, nonresp_analysis[[var]])
+  # Calculate chi-square test
+  chi_test <- chisq.test(cont_table)
+  # Store result
+  chi_square_results <- rbind(chi_square_results, 
+                              data.frame(variable = var, p_value = chi_test$p.value))
 }
 
-data_correctly_coded <- data_correctly_coded %>%
-  # convert country codes: collapse East and West Germany into one DE
-  mutate(isocntry = case_when(
-    isocntry %in% c("DE-W", "DE-E") ~ "DE",
-    TRUE ~ isocntry))
+# Show significant associations
+chi_square_results %>% 
+  filter(p_value < 0.05) %>%
+  arrange(p_value)
 
-###
-# reproducibility
-set.seed(1212)
+##
+continuous_vars <- names(var_uniqueness[!is.na(var_uniqueness) & var_uniqueness >= 6])
+continuous_vars <- setdiff(continuous_vars, c("nonresponse", "qc19"))
 
-# Before running mice, create a predictor matrix
-pred_matrix <- make.predictorMatrix(data_correctly_coded)
+correlation_results <- data.frame(variable = character(), 
+                                  correlation = numeric(),
+                                  stringsAsFactors = FALSE)
 
-# Set qc19 to not be imputed (row for qc19 set to 0)
-pred_matrix["qc19", ] <- 0
+for (var in continuous_vars) {
+  # Calculate correlation
+  cor_val <- cor(nonresp_analysis$nonresponse, nonresp_analysis[[var]], 
+                 use = "pairwise.complete.obs")
+  # Store result
+  correlation_results <- rbind(correlation_results, 
+                               data.frame(variable = var, correlation = cor_val))
+}
 
-# run the imputation
-start_time <- Sys.time()
-imp_model_2 <- mice(data_correctly_coded, m = 3, method = 'rf', maxit = 3, 
-                  predictorMatrix = pred_matrix)
-end_time <- Sys.time()
-end_time - start_time
+# Show strongest correlations
+correlation_results %>% arrange(desc(abs(correlation)))
 
-df_rf_new_2 <- complete(imp_model_2, action = 3)
+## results:
+# 
 
-write_rds(df_rf_new_2) 
+
+
 
