@@ -398,34 +398,25 @@ cMatrix %>% slice_max(Accuracy, n = 3)
 ### Country Level
 
 ```{r}
-country_test <- test 
-country_test$p_rf_eu <- p_rf_eu
-country_test$p_rf_eo <- p_rf_eo
+country_comp <- test 
+country_comp$pred <- p_gbm_s
 
-original <- country_test %>% 
+country_original <- country_test %>% 
   group_by(isocntry, qc19) %>%
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
 
-country_rfeu <- country_test %>% 
-  group_by(isocntry, p_rf_eu) %>%
+country_pred <- country_comp %>% 
+  group_by(isocntry, pred) %>%
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
-country_rfeu
+country_pred
 
-country_rfeo <- country_test %>% 
-  group_by(isocntry, p_rf_eo) %>%
-  summarise(count = n()) %>% 
-  group_by(isocntry) %>% 
-  mutate(pcg = count/sum(count))
-country_rfeo
-
-comparison <- cbind(select(original, c(isocntry,qc19, pcg)), country_rfeu$pcg, country_rfeo$pcg) %>% 
+comparison <- cbind(select(country_original, c(isocntry,qc19, pcg)), country_pred$pcg) %>% 
   rename("response" = 2,
          "original" = 3,
-         "rfeu" = 4,
-         "rfeo" = 5)
+         "pred" = 4)
 comparison
 ```
