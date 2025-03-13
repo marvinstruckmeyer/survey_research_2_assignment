@@ -373,7 +373,8 @@ p_list <- list(rf_u = p_rf_u,
             gbm_s = p_gbm_s,
             #svm_s = p_svm_s,
             #svm_o = p_svm_o,
-            # svm_u = p_svm_u)
+            # svm_u = p_svm_u
+            )
 
 cMatrix <- as.data.frame(list(
   Model = NA,
