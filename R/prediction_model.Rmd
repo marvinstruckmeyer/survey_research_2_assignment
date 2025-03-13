@@ -441,24 +441,28 @@ full_data <- read_rds("../df_rf_enriched_new.rds") %>%
 full_pred <- predict(gbm_smote, full_data)
 
 full_data$pred <- full_pred
+
+fulldata <- full_data %>% 
+  mutate(qc19 = ifelse(qc19 == 3, pred, qc19))
 ```
 
 ```{r}
 sum <- full_data %>% 
-  group_by(isocntry, pred) %>% 
+  group_by(isocntry, qc19) %>% 
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
 sum 
 
 sort <- sum%>%
-  filter(pred == 1) %>% 
+  filter(qc19 == 1) %>% 
   arrange(desc(pcg)) %>% 
   pull(isocntry)
+sort
 ```
 
 ```{r}
-ggplot(sum, aes(x=factor(isocntry, sort), y=count, fill = factor(pred, levels = c("2", "1")))) +
+ggplot(sum, aes(x=factor(isocntry, sort), y=count, fill = factor(qc19, levels = c("2", "1")))) +
   geom_bar(position="fill", stat="identity") +
   scale_y_continuous(labels = scales::percent) +
   scale_fill_manual( values = c("lightgrey", "deepskyblue4")) +
