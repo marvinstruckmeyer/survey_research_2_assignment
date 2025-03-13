@@ -1,6 +1,9 @@
 library(dplyr)
 library(readr)
-df_reduced <- df_rf_enriched %>%
+
+df_rf_enriched_new <- readRDS("df_rf_enriched_new.rds")
+
+df_reduced <- df_rf_enriched_new %>%
   select(
     # target
     qc19,
