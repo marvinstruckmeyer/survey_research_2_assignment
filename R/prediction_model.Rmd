@@ -431,3 +431,37 @@ ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
   labs(x = "Country", y = "Support") + 
   theme(legend.position = "none")
 ```
+
+# Fill in the gap
+
+```{r}
+full_data <- read_rds("../df_rf_enriched_new.rds") %>% 
+  select(-1)
+
+full_pred <- predict(gbm_smote, full_data)
+
+full_data$pred <- full_pred
+```
+
+```{r}
+sum <- full_data %>% 
+  group_by(isocntry, pred) %>% 
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+sum 
+
+sort <- sum%>%
+  filter(pred == 1) %>% 
+  arrange(desc(pcg)) %>% 
+  pull(isocntry)
+```
+
+```{r}
+ggplot(sum, aes(x=factor(isocntry, sort), y=count, fill = factor(pred, levels = c("2", "1")))) +
+  geom_bar(position="fill", stat="identity") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual( values = c("lightgrey", "deepskyblue4")) +
+  labs(x = "Country", y = "Support") + 
+  theme(legend.position = "none") 
+```
