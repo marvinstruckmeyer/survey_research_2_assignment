@@ -425,6 +425,7 @@ comparison
 ```{r}
 ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
   geom_bar(position="stack", stat="identity") +
+  theme_minimal() +
   scale_y_continuous(labels = scales::percent) +
   scale_fill_manual( values = c("lightgrey", "deepskyblue4")) +
   facet_wrap(vars(type), nrow = 2, scales = "free") +
@@ -464,6 +465,7 @@ sort
 ```{r}
 ggplot(sum, aes(x=factor(isocntry, sort), y=count, fill = factor(qc19, levels = c("2", "1")))) +
   geom_bar(position="fill", stat="identity") +
+    theme_minimal() +
   scale_y_continuous(labels = scales::percent) +
   scale_fill_manual( values = c("lightgrey", "deepskyblue4")) +
   labs(x = "Country", y = "Support") + 
