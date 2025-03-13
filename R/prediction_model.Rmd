@@ -168,18 +168,20 @@ select_features_enet
 # train_lasso <- train %>% 
 #   select(all_of(c(select_features_lasso, "qc19")))
 
-# Mapping enet
-select <- c()
-for (i in colnames(train %>% select_if(is.character))) {
-  if (sum(grepl("isocntry", select_features_enet)) >0) {
-    select <- c(select,i)
-  }
-}
+# # Mapping enet
+# select <- c()
+# for (i in colnames(train %>% select_if(is.character))) {
+#   if (sum(grepl(i, select_features_enet)) >0) {
+#     select <- c(select,i)
+#   }
+# }
+# 
+# train_enet <- train %>% 
+#   select(any_of(c(select_features_enet, select, "qc19"))) %>% 
+#   mutate_if(is.character, as.factor) %>% 
+#   mutate(qc19 = as.factor(qc19))
 
-train_enet <- train %>% 
-  select(any_of(c(select_features_enet, select, "qc19"))) %>% 
-  mutate_if(is.character, as.factor) %>% 
-  mutate(qc19 = as.factor(qc19))
+train_enet <- read_rds("regularization/enet_training_data.rds")
 ```
 
 ## Model Training
