@@ -352,7 +352,7 @@ test <- test %>%
 
 # Random Forest
 p_rf_u <- predict(rf_under, test) 
-p_rf_o <- predict(rf_over, test)
+# p_rf_o <- predict(rf_over, test)
 # p_rf_s <- predict(rf_smote, test)
 
 # Gradient Boosting Machines
@@ -361,19 +361,19 @@ p_gbm_o <- predict(gbm_over, test)
 p_gbm_s <- predict(gbm_smote, test)
 
 # Support Vector Machine
-p_svm_u <- predict(svm_under, test) 
+# p_svm_u <- predict(svm_under, test) 
 # p_svm_o <- predict(svm_over, test)
 # p_svm_s <- predict(svm_smote, test)
 
 p_list <- list(rf_u = p_rf_u, 
-            rf_o = p_rf_o,
+            # rf_o = p_rf_o,
             #rf_s = p_rf_s,
             gbm_u = p_gbm_u,
             gbm_o = p_gbm_o,
             gbm_s = p_gbm_s,
             #svm_s = p_svm_s,
             #svm_o = p_svm_o,
-            svm_u = p_svm_u)
+            # svm_u = p_svm_u)
 
 cMatrix <- as.data.frame(list(
   Model = NA,
