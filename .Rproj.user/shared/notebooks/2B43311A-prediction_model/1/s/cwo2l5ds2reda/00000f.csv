@@ -1,0 +1,6 @@
+"0","set.seed(3147)"
+"0","trainIndex <- createDataPartition(data$qc19, p=0.7,"
+"0","                             list = FALSE,"
+"0","                             times = 1)"
+"0","train <- data[trainIndex,]"
+"0","test <- data[-trainIndex,]"

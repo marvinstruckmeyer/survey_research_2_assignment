@@ -1,0 +1,3 @@
+"0","cor <- cor(train %>% select_if(is.numeric))"
+"0",""
+"0","corrplot(cor, method=""color"", type=""lower"", tl.cex = 0.2)"

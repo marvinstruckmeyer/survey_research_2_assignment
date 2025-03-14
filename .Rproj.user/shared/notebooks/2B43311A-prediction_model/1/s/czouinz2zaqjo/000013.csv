@@ -1,0 +1,5 @@
+"0","lasso_coefs <- coef(model_cv)"
+"0",""
+"0","select_features_lasso <- rownames(lasso_coefs)[coefs[,1] != 0][-1]"
+"2","Error: object 'coefs' not found
+"
