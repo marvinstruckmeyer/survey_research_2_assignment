@@ -97,11 +97,11 @@ corrplot(cor, method="color", type="lower", tl.cex = 0.2)
 
 #Matrix of predictors
 # X <- train %>% select(-qc19) %>% as.matrix()
-y <- train %>% 
-  select(qc19) %>% 
-  # mutate(qc19 = as.numeric(qc19)) %>% 
-  # scale(center=TRUE, scale=FALSE) %>% 
-  as.matrix()
+# y <- train %>% 
+#   select(qc19) %>% 
+#   # mutate(qc19 = as.numeric(qc19)) %>% 
+#   # scale(center=TRUE, scale=FALSE) %>% 
+#   as.matrix()
 
 # Lasso with Cross-validation 
 # lasso <- cv.glmnet(X,  y,  
@@ -130,36 +130,36 @@ y <- train %>%
 ### Elastic Net Dimension Reduction
 
 ```{r message = FALSE}
-set.seed(3244)
-# Training control
-ctrl <- trainControl(method = "repeatedcv",
-                     number=5,
-                     repeats = 5,
-                     search = "random",
-                     verboseIter = TRUE)
-# Train model
-enet <- train(qc19 ~., data = train, method="glmnet",
-              ppreProcess = c("center", "scale"),
-              tuneLength = 10, 
-              trControl = ctrl)
-saveRDS(enet, "regularization/elasticNet.rds")
-# Check Accuracy
-confusionMatrix(y_hat_enet, as.factor(y))
+# set.seed(3244)
+# # Training control
+# ctrl <- trainControl(method = "repeatedcv",
+#                      number=5,
+#                      repeats = 5,
+#                      search = "random",
+#                      verboseIter = TRUE)
+# # Train model
+# enet <- train(qc19 ~., data = train, method="glmnet",
+#               ppreProcess = c("center", "scale"),
+#               tuneLength = 10, 
+#               trControl = ctrl)
+# saveRDS(enet, "regularization/elasticNet.rds")
+# # Check Accuracy
+# confusionMatrix(y_hat_enet, as.factor(y))
 ```
 
 ```{r}
-# Columns with coef = 0
-enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>% 
-  unlist() %>% 
-  as.matrix() %>% 
-  as.data.frame()
-
-select_features_enet <- enet_coefs %>% 
-  filter(s1 != 0) %>% 
-  row.names() %>% 
-  .[-1]
-
-select_features_enet
+# # Columns with coef = 0
+# enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>% 
+#   unlist() %>% 
+#   as.matrix() %>% 
+#   as.data.frame()
+# 
+# select_features_enet <- enet_coefs %>% 
+#   filter(s1 != 0) %>% 
+#   row.names() %>% 
+#   .[-1]
+# 
+# select_features_enet
 ```
 
 ## Feature Selection
@@ -187,117 +187,117 @@ train_enet <- read_rds("regularization/enet_training_data.rds")
 ## Model Training
 
 ```{r}
-ctrl <- trainControl(method = "repeatedcv", number=5,
-                     repeats = 5, verboseIter = TRUE)
+# ctrl <- trainControl(method = "repeatedcv", number=5,
+                     # repeats = 5, verboseIter = TRUE)
 ```
 
 ### Random Forest (RF)
 
 ```{r}
-# enet
-
-## under
-ctrl$sampling <- "down"
-rf_enet_under <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "rf",
-  trControl = ctrl
-)
-saveRDS(rf_enet_under, file = "models/rf_enet_under.rds")
-
-## upper
-ctrl$sampling <- "up"
-rf_enet_upper <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "rf",
-  trControl = ctrl
-)
-saveRDS(rf_enet_upper, file = "models/rf_enet_upper.rds")
-
-## synthetic
-ctrl$sampling <- "smote"
-rf_enet_smote <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "rf",
-  trControl = ctrl
-)
-saveRDS(rf_enet_smote, file = "models/rf_enet_smote.rds")
+# # enet
+# 
+# ## under
+# ctrl$sampling <- "down"
+# rf_enet_under <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "rf",
+#   trControl = ctrl
+# )
+# saveRDS(rf_enet_under, file = "models/rf_enet_under.rds")
+# 
+# ## upper
+# ctrl$sampling <- "up"
+# rf_enet_upper <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "rf",
+#   trControl = ctrl
+# )
+# saveRDS(rf_enet_upper, file = "models/rf_enet_upper.rds")
+# 
+# ## synthetic
+# ctrl$sampling <- "smote"
+# rf_enet_smote <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "rf",
+#   trControl = ctrl
+# )
+# saveRDS(rf_enet_smote, file = "models/rf_enet_smote.rds")
 
 ```
 
 ### Gradient Boosting Machines (GBM)
 
 ```{r}
-# enet
-
-## under
-ctrl$sampling <- "down"
-gbm_enet_under <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "gbm",
-  trControl = ctrl
-)
-saveRDS(gbm_enet_under, file = "models/gbm_enet_under.rds")
-
-## upper
-ctrl$sampling <- "up"
-gbm_enet_upper <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "gbm",
-  trControl = ctrl
-)
-saveRDS(gbm_enet_upper, file = "models/gbm_enet_upper.rds")
-
-## synthetic
-ctrl$sampling <- "smote"
-gbm_enet_smote <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "gbm",
-  trControl = ctrl
-)
-saveRDS(gbm_enet_smote, file = "models/gbm_enet_smote.rds")
+# # enet
+# 
+# ## under
+# ctrl$sampling <- "down"
+# gbm_enet_under <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "gbm",
+#   trControl = ctrl
+# )
+# saveRDS(gbm_enet_under, file = "models/gbm_enet_under.rds")
+# 
+# ## upper
+# ctrl$sampling <- "up"
+# gbm_enet_upper <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "gbm",
+#   trControl = ctrl
+# )
+# saveRDS(gbm_enet_upper, file = "models/gbm_enet_upper.rds")
+# 
+# ## synthetic
+# ctrl$sampling <- "smote"
+# gbm_enet_smote <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "gbm",
+#   trControl = ctrl
+# )
+# saveRDS(gbm_enet_smote, file = "models/gbm_enet_smote.rds")
 ```
 
 ### Support Vector Machine (SVM)
 
 ```{r}
-# enet
-
-## under
-ctrl$sampling <- "down"
-svm_enet_under <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "svmRadial",
-  trControl = ctrl
-)
-saveRDS(svm_enet_under, file = "models/svm_enet_under.rds")
-
-## upper
-ctrl$sampling <- "up"
-svm_enet_upper <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "svmRadial",
-  trControl = ctrl
-)
-saveRDS(svm_enet_upper, file = "models/svm_enet_upper.rds")
-
-## synthetic
-ctrl$sampling <- "smote"
-svm_enet_smote <- train(
-  qc19 ~ .,
-  data = train_enet,
-  method = "svmRadial",
-  trControl = ctrl
-)
-saveRDS(svm_enet_smote, file = "models/svm_enet_smote.rds")
+# # enet
+# 
+# ## under
+# ctrl$sampling <- "down"
+# svm_enet_under <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "svmRadial",
+#   trControl = ctrl
+# )
+# saveRDS(svm_enet_under, file = "models/svm_enet_under.rds")
+# 
+# ## upper
+# ctrl$sampling <- "up"
+# svm_enet_upper <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "svmRadial",
+#   trControl = ctrl
+# )
+# saveRDS(svm_enet_upper, file = "models/svm_enet_upper.rds")
+# 
+# ## synthetic
+# ctrl$sampling <- "smote"
+# svm_enet_smote <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "svmRadial",
+#   trControl = ctrl
+# )
+# saveRDS(svm_enet_smote, file = "models/svm_enet_smote.rds")
 
 ```
 
@@ -308,8 +308,8 @@ saveRDS(svm_enet_smote, file = "models/svm_enet_smote.rds")
 ```{r}
 # Random Forest
 rf_under <- read_rds("models/rf_enet_under.rds")
-rf_over <- read_rds("models/rf_enet_upper.rds")
-# rf_smote <- read_rds("models/rf_enet_smote.rds")
+#rf_over <- read_rds("models/rf_enet_upper.rds")
+rf_smote <- read_rds("models/rf_enet_smote.rds")
 
 # Gradient Boosting Machines
 gbm_under <- read_rds("models/gbm_enet_under.rds")
@@ -319,18 +319,18 @@ gbm_smote <- read_rds("models/gbm_enet_smote.rds")
 
 # Support Vector Machine
 svm_under <- read_rds("models/svm_enet_under.rds")
-# svm_over <- read_rds("models/svm_enet_upper.rds")
+svm_over <- read_rds("models/svm_enet_upper.rds")
 # svm_smote <- read_rds("models/svm_enet_smote.rds")
 
 
 results_train <- resamples(list(
   rf_u = rf_under,
-  rf_o = rf_over,
-  # rf_s =  rf_smote,
+  # rf_o = rf_over,
+  rf_s =  rf_smote,
   gbm_u = gbm_under,
   gbm_o = gbm_over,
   gbm_s = gbm_smote,
-  # svm_o = svm_over,
+  svm_o = svm_over,
   # svm_s = svm_smote,
   svm_u = svm_under
   ))  
@@ -353,7 +353,7 @@ test <- test %>%
 # Random Forest
 p_rf_u <- predict(rf_under, test) 
 # p_rf_o <- predict(rf_over, test)
-# p_rf_s <- predict(rf_smote, test)
+p_rf_s <- predict(rf_smote, test)
 
 # Gradient Boosting Machines
 p_gbm_u <- predict(gbm_under, test) 
@@ -361,19 +361,19 @@ p_gbm_o <- predict(gbm_over, test)
 p_gbm_s <- predict(gbm_smote, test)
 
 # Support Vector Machine
-# p_svm_u <- predict(svm_under, test) 
-# p_svm_o <- predict(svm_over, test)
+p_svm_u <- predict(svm_under, test)
+p_svm_o <- predict(svm_over, test)
 # p_svm_s <- predict(svm_smote, test)
 
 p_list <- list(rf_u = p_rf_u, 
             # rf_o = p_rf_o,
-            #rf_s = p_rf_s,
+            rf_s = p_rf_s,
             gbm_u = p_gbm_u,
             gbm_o = p_gbm_o,
-            gbm_s = p_gbm_s
+            gbm_s = p_gbm_s,
             #svm_s = p_svm_s,
-            #svm_o = p_svm_o,
-            # svm_u = p_svm_u
+            svm_o = p_svm_o,
+            svm_u = p_svm_u
             )
 
 cMatrix <- as.data.frame(list(
@@ -401,7 +401,7 @@ cMatrix %>% slice_max(Accuracy, n = 3)
 country_comp <- test 
 country_comp$pred <- p_gbm_s
 
-country_original <- country_test %>% 
+country_original <- country_comp %>% 
   group_by(isocntry, qc19) %>%
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
