@@ -134,3 +134,35 @@ Related questions from survey:
 -   **QC17** - To what extent do you agree or disagree with each of the following statements? School lessons and material should include information about diversity in terms of …
 
     -   1 - Religion or beliefs
+
+```{r}
+religion <- data %>% 
+  select(isocntry,starts_with(c("qc2_6", "qc9_8", "qc17_1"))) %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-E", "DE-W"), "DE", isocntry),
+         qc9_8 = ifelse(qc9_8 == 7, 0, qc9_8),
+         qc17_1 = case_when(qc17_1 == 1 ~ 4,
+                            qc17_1 == 2 ~ 3,
+                            qc17_1 == 3 ~ 2,
+                            qc17_1 == 4 ~ 1,
+                            qc17_1 == 5 ~ 0)) %>% 
+  mutate(religious_level = qc2_6 + qc9_8 + qc17_1)
+
+religiosity <- religion %>% 
+  group_by(isocntry) %>% 
+  summarise(avg_religiosity = mean(religious_level)) %>% 
+  left_join(qc19, join_by("isocntry")) %>% 
+  select(isocntry, avg_religiosity, support_pcg)
+religiosity
+```
+
+```{r}
+cor(religiosity$avg_religiosity, religiosity$support_pcg)
+```
+
+```{r}
+ggplot(religiosity, aes(x = avg_religiosity, y = support_pcg)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  xlab("Support Percentage") +
+  ylab("Religiosity")
+```
