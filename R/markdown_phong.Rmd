@@ -1,0 +1,168 @@
+---
+title: "Survey II - Final"
+author: "Phong, Marvin, Isabel"
+date: "2025-03-01"
+output: html_document
+---
+
+# Libraries
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(haven)
+```
+
+# Context
+
+## Data
+
+```{r}
+data <- read_dta("../data/raw/ZA7575.dta")
+
+# Mapping
+country_mapping <- data.frame(
+  country_name = c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", 
+                   "Czech Republic", "Denmark", "Estonia", "Finland", "France", 
+                   "Germany", "Greece", "Hungary", "Ireland", "Italy", 
+                   "Latvia", "Lithuania", "Luxembourg", "Malta", "Netherlands", 
+                   "Poland", "Portugal", "Romania", "Slovakia", "Slovenia", 
+                   "Spain", "Sweden", "United Kingdom"),
+  iso2 = c("AT", "BE", "BG", "HR", "CY", 
+           "CZ", "DK", "EE", "FI", "FR", 
+           "DE", "EL", "HU", "IE", "IT", # GR = EL in the survey
+           "LV", "LT", "LU", "MT", "NL", 
+           "PL", "PT", "RO", "SK", "SI", 
+           "ES", "SE", "UK"), # GB = UK in the survey
+  country_code = 1:28,  
+  stringsAsFactors = FALSE)
+
+# QC19
+qc19 <- data %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-E", "DE-W"), "DE", isocntry)) %>% 
+  select(starts_with("qc19")|"isocntry") %>% 
+  group_by(isocntry, qc19) %>% 
+  summarise(support = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(support_pcg = support/sum(support)) %>% 
+  filter(qc19 == 1) 
+```
+
+## Happiness
+
+```{r}
+happiness <- read_rds("../happiness_scores.rds")
+```
+
+```{r}
+summary(happiness)
+sd(happiness$Happiness_Score)
+```
+
+The World Happiness reported for 2015-2017, there was a 4-point gap between the top-ranked and bottom-ranked countries. For European countries, this range is lower, down to roughly 2.6 points between the lowest and highest score.
+
+Most countries' scores are within 5.8 and 6.9 and have a standard deviation of 0.744. This indicates a moderate difference in happiness between the countries.
+
+```{r}
+ggplot(happiness, aes(x=reorder(Country, Happiness_Score, decreasing = TRUE), y=Happiness_Score)) +
+  geom_col() +
+  xlab("Country") +
+  labs(
+    title = "Happiness Score Ranking Among European Countries") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+qc19_ranking <- data.frame(
+  country = c("ES", "MT", "NL", "DK", "LU", "FR", "PT", "BE", "DE", "SE", "FI", "UK", "IE", "AT", "EL", "EE", "SI", "IT", "LV", "CY", "PL", "HR", "CZ", "LT", "SK", "RO", "HU", "BG"),
+  ranking = seq.int(28)
+) %>% 
+  left_join(country_mapping, join_by("country" == "iso2")) %>% 
+  select(-c(country,country_code))
+
+compare_happiness <- happiness %>% 
+  arrange(desc(Happiness_Score)) %>% 
+  mutate(happiness_ranking = row_number()) %>% 
+  left_join(qc19_ranking, join_by("Country" == "country_name")) %>% 
+  rename(support_ranking = ranking) %>% 
+  select(Country, happiness_ranking, support_ranking)
+
+compare_happiness
+```
+
+```{r}
+cor(compare_happiness$happiness_ranking, compare_happiness$support_ranking)
+```
+
+```{r}
+ggplot(compare_happiness, aes(x = support_ranking, y = happiness_ranking)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  xlab("Support Ranking") +
+  ylab("Happiness Ranking")
+```
+
+## Religiosity
+
+Related questions from survey:
+
+-   SD1 - Do you have friends or acquaintances who are ... ?
+
+    -   6 - of a different religion or have different beliefs than you
+
+-   **QC1** - For each of the following types of discrimination, could you please tell me whether, in your opinion, it is very widespread, fairly widespread, fairly rare or very rare in (OUR COUNTRY)? Discrimination on the basis of…
+
+    -   6 - Religion or beliefs
+
+-   **QC2** - In the past 12 months have you personally felt discriminated against or experienced harassment on one or more of the following grounds? Please tell me all that apply.
+
+    -   6 - Religion or beliefs
+
+-   QC6 - Using a scale from 1 to 10, please tell me how you would feel about having a person from each of the following groups in the highest elected political position in (OUR COUNTRY). '1' means that you would feel "not at all comfortable" and '10' that you would feel "totally comfortable".
+
+    -   9 - a person with a different religion than the majority
+
+-   **QC9** - Do you think that enough is being done to promote diversity in your work place as far as each of the following is concerned?
+
+    -   8 - Religion or beliefs
+
+-   **QC11** - Are you in favour or opposed to providing anonymous information about … as part of a census or statistical survey, if that could help to combat discrimination in (OUR COUNTRY)?
+
+    -   4 Your religion or beliefs
+
+-   **QC17** - To what extent do you agree or disagree with each of the following statements? School lessons and material should include information about diversity in terms of …
+
+    -   1 - Religion or beliefs
+
+```{r}
+religion <- data %>% 
+  select(isocntry,starts_with(c("qc2_6", "qc9_8", "qc17_1"))) %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-E", "DE-W"), "DE", isocntry),
+         qc9_8 = ifelse(qc9_8 == 7, 0, qc9_8),
+         qc17_1 = case_when(qc17_1 == 1 ~ 4,
+                            qc17_1 == 2 ~ 3,
+                            qc17_1 == 3 ~ 2,
+                            qc17_1 == 4 ~ 1,
+                            qc17_1 == 5 ~ 0)) %>% 
+  mutate(religious_level = qc2_6 + qc9_8 + qc17_1)
+
+religiosity <- religion %>% 
+  group_by(isocntry) %>% 
+  summarise(avg_religiosity = mean(religious_level)) %>% 
+  left_join(qc19, join_by("isocntry")) %>% 
+  select(isocntry, avg_religiosity, support_pcg)
+religiosity
+```
+
+```{r}
+cor(religiosity$avg_religiosity, religiosity$support_pcg)
+```
+
+```{r}
+ggplot(religiosity, aes(x = avg_religiosity, y = support_pcg)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  xlab("Support Percentage") +
+  ylab("Religiosity")
+```
