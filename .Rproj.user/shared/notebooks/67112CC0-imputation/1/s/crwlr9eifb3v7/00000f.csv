@@ -1,4 +1,0 @@
-"0","missing_data %>% "
-"0","  group_by(question) %>% "
-"0","  summarise(avg_missing_pcg = mean(missing_pcg))  %>% "
-"0","  arrange(desc(avg_missing_pcg))"
