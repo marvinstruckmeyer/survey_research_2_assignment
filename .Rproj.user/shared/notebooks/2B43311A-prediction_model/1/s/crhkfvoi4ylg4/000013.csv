@@ -1,8 +1,0 @@
-"0","train_lasso <- train %>% "
-"0","  select(all_of(c(select_features_lasso, ""qc19"")))"
-"1","[1m[33mError[39m in `select()`:[22m
-[38;5;254m[36mℹ[38;5;254m In argument: `all_of(c(select_features_lasso, ""qc19""))`.[39m
-[1mCaused by error:[22m
-[33m![39m object 'select_features_lasso' not found
-[90mRun `]8;;x-r-run:rlang::last_trace()rlang::last_trace()]8;;` to see where the error occurred.[39m
-"
