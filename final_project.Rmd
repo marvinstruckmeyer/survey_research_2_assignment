@@ -1916,6 +1916,126 @@ write_rds(df_reduced, "df_reduced.rds")
 
 ## Descriptive analysis 2
 
+### Individual Level Variables
+
+```{r}
+# define variable blocks 
+block_demographics <- c(
+  "age", "gender", "education", "d8r2",
+  "occupation", "urban_rural", "financial_insecurity",
+  "social_class", "religion", "political_ideology",
+  "lgb_friends", "trans_friends"
+)
+
+block_personal_identity <- c(
+  "ethnic_minority", "skin_color_minority", "religious_minority",
+  "sexual_lgbt_minority", "disability_minority", "other_minority", "none_minority"
+)
+
+block_discrimination <- c(
+  "trans_discrimination_country", "trans_discrimination_personal",
+  "trans_discrimination_workplace", "trans_discrimination_political",
+  "country_discrimination_efforts", "country_discrimination_efforts_recoded",
+  "trans_workplace_diversity", "trans_colleague", "trans_colleague_recoded",
+  "trans_child_relationship", "trans_child_relationship_recoded",
+  "lgb_rights", "same_sex_relationship", "same_sex_marriage",
+  "lgb_school_materials", "trans_school_materials", "intersex_school_materials",
+  "two_men_public_affection", "two_men_public_affection_recoded",
+  "two_women_public_affection", "two_women_public_affection_recoded",
+  "non_gendered_docs"
+)
+
+block_paradata <- c(
+  "interview_date",
+  "interview_start_time",
+  "interview_duration",
+  "interview_duration_recoded",
+  "people_present_during_interview",
+  "respondent_cooperation"
+)
+
+# outcome variable
+outcome_var <- "qc19"
+
+# function to compute and plot top correlations 
+plot_top_correlations <- function(data, vars_block, outcome = "qc19", block_title = "Block") {
+  needed_vars <- intersect(vars_block, names(data))
+  df_block <- data[, c(outcome, needed_vars), drop = FALSE]
+  if (!is.numeric(df_block[[outcome]])) {
+    df_block[[outcome]] <- as.numeric(as.character(df_block[[outcome]]))
+  }
+  df_block_num <- df_block %>% select(where(is.numeric))
+  if (!(outcome %in% names(df_block_num))) {
+    message("Outcome variable not numeric in ", block_title)
+    return(NULL)
+  }
+  cor_df <- data.frame(
+    variable = setdiff(names(df_block_num), outcome),
+    correlation = sapply(setdiff(names(df_block_num), outcome), function(var) {
+      cor(df_block_num[[var]], df_block_num[[outcome]], use = "complete.obs")
+    })
+  )
+  
+  # sort by absolute correlation for readability & keep top 15
+  cor_df <- cor_df %>% arrange(desc(abs(correlation))) %>% head(15)
+  
+  # plot top correlated variables
+  ggplot(cor_df, aes(x = reorder(variable, correlation), y = correlation)) +
+    geom_bar(stat = "identity", aes(fill = correlation > 0)) +
+    coord_flip() +
+    labs(
+      title = paste0("Top Correlated Variables with ", outcome),
+      subtitle = paste0(block_title, " - Aggregated Data"),
+      x = "Variables",
+      y = paste("Correlation with", outcome)
+    ) +
+    theme_minimal() +
+    scale_fill_manual(values = c("firebrick", "steelblue"), 
+                      name = "Direction",
+                      labels = c("Negative", "Positive"))
+}
+
+# generate correlation plots for each block
+plot_top_correlations(df_reduced, block_demographics, "qc19", "DEMOGRAPHICS")
+plot_top_correlations(df_reduced, block_personal_identity, "qc19", "PERSONAL IDENTITY")
+plot_top_correlations(df_reduced, block_discrimination, "qc19", "DISCRIMINATION")
+plot_top_correlations(df_reduced, block_paradata, "qc19", "PARADATA")
+
+### Random forest for individual variables
+# train Random Forest model 
+rf_model <- ranger(
+  formula = qc19 ~ ., 
+  data = train_data,
+  importance = "impurity", 
+  num.trees = 500,
+  mtry = floor(sqrt(ncol(train_data) - 1)), 
+  probability = TRUE
+)
+
+# extract and plot variable importance
+var_importance <- rf_model$variable.importance
+
+# Convert to data frame and sort
+var_importance_df <- data.frame(
+  Variable = names(var_importance),
+  Importance = as.numeric(var_importance)
+) %>%
+  arrange(desc(Importance))
+
+# plot variable importance
+ggplot(var_importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "#4682B4") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Variable Importance from Random Forest",
+    x = "Variables",
+    y = "Importance"
+ )
+```
+
+### Country Level Variables
+
 ```{r}
 # load datasets
 df_reduced <- readRDS("df_reduced.rds")
@@ -2348,7 +2468,9 @@ ggplot(religion_support, aes(x = reorder(religion_group, support_rate), y = supp
     axis.text.y = element_text(face = "bold"))
 ```
 
-Based on the results of our descriptive analysis, we should use the following variables in the multilevel regression model: z_rainbow_score, z_gender_equality, regions, z_v2x_libdem, z_v2z_egaldem, norm_gdp_2018
+Based on the results of our descriptive analysis, we should use the
+following variables in the multilevel regression model: z_rainbow_score,
+z_gender_equality, regions, z_v2x_libdem, z_v2z_egaldem, norm_gdp_2018
 
 ```{r}
 ### use descriptive ML for predictor selection
@@ -2412,7 +2534,8 @@ ggplot(var_importance_df, aes(x = reorder(Variable, Importance), y = Importance)
   )
 ```
 
-We see similar variables are most important using descriptive ML, reinforcing our previous decision. 
+We see similar variables are most important using descriptive ML,
+reinforcing our previous decision.
 
 ## Explanatory Modeling
 
@@ -3018,4 +3141,421 @@ p3
 p4
 p5
 p6
+```
+
+## Predictive Modelling
+
+### Data
+
+```{r}
+# Reading data set that was already prepared for the ML training
+data <- read_rds("R/data_for_ML.rds")
+data$qc19 <- as.factor(data$qc19)
+```
+
+### Train Model
+
+```{r}
+# Training Data Split
+set.seed(3147)
+trainIndex <- createDataPartition(data$qc19, p=0.7,
+                             list = FALSE,
+                             times = 1)
+train <- data[trainIndex,]
+test <- data[-trainIndex,]
+```
+
+```{r}
+# Data Imbalance Check
+train %>% 
+  mutate(isocntry = ifelse(isocntry %in% c("DE-W", "DE-E"), "DE", isocntry)) %>% 
+  group_by(qc19) %>% 
+  summarise(count = n()) %>% 
+  mutate(percent = count/sum(count)) %>% 
+  arrange(desc(percent)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x= qc19, y=percent, label=count, fill = qc19)) +
+  geom_col() +
+  geom_text(vjust = -0.3) +
+  scale_y_continuous(labels=scales::percent) +
+  theme_minimal() +
+  labs(y = "Percentage", x = "qc19",
+       title = "Mild Imbalance of Data (60%-40%) in qc19 Categories") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "none")
+```
+
+```{r}
+# Elastic Net Dimension Reduction
+
+# set.seed(3244)
+# # Training control
+# ctrl <- trainControl(method = "repeatedcv",
+#                      number=5,
+#                      repeats = 5,
+#                      search = "random",
+#                      verboseIter = TRUE)
+# # Train model
+# enet <- train(qc19 ~., data = train, method="glmnet",
+#               ppreProcess = c("center", "scale"),
+#               tuneLength = 10, 
+#               trControl = ctrl)
+# saveRDS(enet, "regularization/elasticNet.rds")
+
+# # Columns with coef = 0
+# enet_coefs <- coef(enet$finalModel, enet$bestTune$lambda) %>% 
+#   unlist() %>% 
+#   as.matrix() %>% 
+#   as.data.frame()
+# 
+# select_features_enet <- enet_coefs %>% 
+#   filter(s1 != 0) %>% 
+#   row.names() %>% 
+#   .[-1]
+# 
+# select_features_enet
+
+#-------------------------------------------------------------------
+# Feature Selection
+
+# # Mapping enet
+# select <- c()
+# for (i in colnames(train %>% select_if(is.character))) {
+#   if (sum(grepl(i, select_features_enet)) >0) {
+#     select <- c(select,i)
+#   }
+# }
+# 
+# train_enet <- train %>% 
+#   select(any_of(c(select_features_enet, select, "qc19"))) %>% 
+#   mutate_if(is.character, as.factor) %>% 
+#   mutate(qc19 = as.factor(qc19))
+
+train_enet <- read_rds("R/regularization/enet_training_data.rds")
+```
+
+As the regularization takes a long time to load, we saved dataset with
+already selected features after Elastic Net feature reduction so it is
+readily available.
+
+```{r}
+# Control set
+# ctrl <- trainControl(method = "repeatedcv", number=5,
+                     # repeats = 5, verboseIter = TRUE)
+
+#-------------------------------------------------------------------
+# Random Forest (RF)
+
+# ## under
+# ctrl$sampling <- "down"
+# rf_enet_under <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "rf",
+#   trControl = ctrl
+# )
+# saveRDS(rf_enet_under, file = "models/rf_enet_under.rds")
+# 
+# ## upper
+# ctrl$sampling <- "up"
+# rf_enet_upper <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "rf",
+#   trControl = ctrl
+# )
+# saveRDS(rf_enet_upper, file = "models/rf_enet_upper.rds")
+# 
+# ## synthetic
+# ctrl$sampling <- "smote"
+# rf_enet_smote <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "rf",
+#   trControl = ctrl
+# )
+# saveRDS(rf_enet_smote, file = "models/rf_enet_smote.rds")
+
+#-------------------------------------------------------------------
+# Gradient Boosting Machines (GBM)
+
+# ## under
+# ctrl$sampling <- "down"
+# gbm_enet_under <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "gbm",
+#   trControl = ctrl
+# )
+# saveRDS(gbm_enet_under, file = "models/gbm_enet_under.rds")
+# 
+# ## upper
+# ctrl$sampling <- "up"
+# gbm_enet_upper <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "gbm",
+#   trControl = ctrl
+# )
+# saveRDS(gbm_enet_upper, file = "models/gbm_enet_upper.rds")
+# 
+# ## synthetic
+# ctrl$sampling <- "smote"
+# gbm_enet_smote <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "gbm",
+#   trControl = ctrl
+# )
+# saveRDS(gbm_enet_smote, file = "models/gbm_enet_smote.rds")
+
+#-------------------------------------------------------------------
+# Support Vector Machine (SVM)
+
+# ## under
+# ctrl$sampling <- "down"
+# svm_enet_under <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "svmRadial",
+#   trControl = ctrl
+# )
+# saveRDS(svm_enet_under, file = "models/svm_enet_under.rds")
+# 
+# ## upper
+# ctrl$sampling <- "up"
+# svm_enet_upper <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "svmRadial",
+#   trControl = ctrl
+# )
+# saveRDS(svm_enet_upper, file = "models/svm_enet_upper.rds")
+# 
+# ## synthetic
+# ctrl$sampling <- "smote"
+# svm_enet_smote <- train(
+#   qc19 ~ .,
+#   data = train_enet,
+#   method = "svmRadial",
+#   trControl = ctrl
+# )
+# saveRDS(svm_enet_smote, file = "models/svm_enet_smote.rds")
+```
+
+Similarly, these models take a long time to train. Therefore, we will
+only load the pre-trained models using this code.
+
+### Performance Evaluation
+
+\*Note: due to time constraint, we were only able to train 7 models.
+
+```{r}
+# Performance on training data
+
+# Random Forest
+rf_under <- read_rds("R/models/rf_enet_under.rds")
+#rf_over <- read_rds("R/models/rf_enet_upper.rds")
+rf_smote <- read_rds("R/models/rf_enet_smote.rds")
+
+# Gradient Boosting Machines
+gbm_under <- read_rds("R/models/gbm_enet_under.rds")
+gbm_over <- read_rds("R/models/gbm_enet_upper.rds")
+gbm_smote <- read_rds("R/models/gbm_enet_smote.rds")
+
+
+# Support Vector Machine
+svm_under <- read_rds("R/models/svm_enet_under.rds")
+svm_over <- read_rds("R/models/svm_enet_upper.rds")
+# svm_smote <- read_rds("R/models/svm_enet_smote.rds")
+
+#-------------------------------------------------------------------
+# Summarizing performance of all models in training data
+results_train <- resamples(list(
+  rf_u = rf_under,
+  # rf_o = rf_over,
+  rf_s =  rf_smote,
+  gbm_u = gbm_under,
+  gbm_o = gbm_over,
+  gbm_s = gbm_smote,
+  svm_o = svm_over,
+  # svm_s = svm_smote,
+  svm_u = svm_under
+  ))  
+
+summary(results_train)
+
+bwplot(results_train, scales = list(x = list(relation = "free"), y = list(relation = "free")))
+```
+
+```{r}
+# Prediction on individual level
+
+test <- test %>% 
+  mutate(qc19 = as.factor(qc19))
+
+# Random Forest
+p_rf_u <- predict(rf_under, test) 
+# p_rf_o <- predict(rf_over, test)
+p_rf_s <- predict(rf_smote, test)
+
+# Gradient Boosting Machines
+p_gbm_u <- predict(gbm_under, test) 
+p_gbm_o <- predict(gbm_over, test)
+p_gbm_s <- predict(gbm_smote, test)
+
+# Support Vector Machine
+p_svm_u <- predict(svm_under, test)
+p_svm_o <- predict(svm_over, test)
+# p_svm_s <- predict(svm_smote, test)
+
+p_list <- list(rf_u = p_rf_u, 
+            # rf_o = p_rf_o,
+            rf_s = p_rf_s,
+            gbm_u = p_gbm_u,
+            gbm_o = p_gbm_o,
+            gbm_s = p_gbm_s,
+            #svm_s = p_svm_s,
+            svm_o = p_svm_o,
+            svm_u = p_svm_u
+            )
+
+#-------------------------------------------------------------------
+# Create a dataframe of the model's performance
+cMatrix <- as.data.frame(list(
+  Model = NA,
+  Accuracy = NA,
+  Kappy = NA
+))
+
+for (i in 1:length(p_list)) {
+  model <- names(p_list[i])
+  pred <- p_list[i] %>% unlist()
+  matrix <- confusionMatrix(pred, test$qc19)$overall[1:2]
+ cMatrix <- rbind(cMatrix, c(model, matrix)) 
+}
+
+cMatrix <- cMatrix %>% 
+  drop_na()
+
+#-------------------------------------------------------------------
+# Top 3 best-performing models
+cMatrix %>% slice_max(Accuracy, n = 3)
+```
+
+```{r}
+# Prediction on country level
+
+country_comp <- test            # replicate test set
+country_comp$pred <- p_rf_s    # create new column of predictions from Random Forest (using synthetic data generation)
+
+#------------------------------------------------------------------------
+# Summarizing real support level of countries 
+country_original <- country_comp %>%  
+  group_by(isocntry, qc19) %>%
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+# Summarizing predicted support level of countries 
+country_pred <- country_comp %>% 
+  group_by(isocntry, pred) %>%
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+# Joining the previous 2 summarized dataframes
+comparison <- cbind(select(country_original, c(isocntry,qc19, pcg)), country_pred$pcg) %>% 
+  rename("response" = 2,
+         "original" = 3,
+         "pred" = 4) %>% 
+  mutate(response = factor(c("1", "2"), levels = c("2", "1"))) %>% 
+  pivot_longer(cols = c("original", "pred"), names_to = "type") %>% 
+  mutate(type = factor(type, labels = c("Original Responses", "Predicted Responses")))
+
+#-----------------------------------------------------------------------------
+# Visualization of both predicted and original support levels among countries
+ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
+  geom_bar(position="stack", stat="identity") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual( values = c("lightgrey", "deepskyblue4")) +
+  facet_wrap(~type, nrow = 2, scales = "free") +
+  labs(x = "Country", y = "Support Level",
+       title = "Predicted Responses (RF) Displays Similar Results to Real Responses") + 
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
+```
+
+### Filling The Gap
+
+```{r}
+# Loading original full dataset (without removing DK answers)
+qc19_uniterated <- read_rds("df_rf_enriched.rds") %>% select(qc19) %>% pull()
+full_data <- read_rds("df_rf_enriched_new.rds") %>% 
+  select(-1) 
+full_data$qc19 <- qc19_uniterated  
+
+full_pred <- predict(rf_smote, full_data) # Prediction using RF synthetic data
+full_data$pred <- full_pred                # Create new column of the prediction
+
+# Replace DK answers with predicted data
+full_data <- full_data %>% 
+  mutate(qc19_enhanced = ifelse(qc19 == 3, pred, qc19))
+
+#-----------------------------------------------------------------------------
+# (Enhanced) Summarize data by country
+sum_enhanced <- full_data %>% 
+  group_by(isocntry, qc19_enhanced) %>% 
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+# (Enhanced) Ranking of countries list
+sort_enhanced <- sum%>%
+  filter(qc19_enhanced == 1) %>% 
+  arrange(desc(pcg)) %>% 
+  pull(isocntry)
+
+# (Original) Summarize data by country
+sum_origin <- full_data %>% 
+  group_by(isocntry, qc19) %>% 
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+# (Original) Ranking of countries list
+sort_origin <- sum_origin%>%
+  filter(qc19 == 1) %>% 
+  arrange(desc(pcg)) %>% 
+  pull(isocntry)
+
+#-----------------------------------------------------------------------------
+# Visualization of support level with predicted answers of DK responses
+g_enhanced <- ggplot(sum_enhanced, 
+                     aes(x=factor(isocntry, sort_enhanced), y=count, fill = factor(qc19_enhanced, levels = c("2", "1")))) +
+  geom_bar(position="fill", stat="identity") +
+    theme_minimal() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual( values = c("indianred", "deepskyblue4")) +
+  labs(x = "Country", y = "Support Level",
+       title = "Enhanced Responses") + 
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 11),
+        axis.title = element_blank())
+
+g_origin <- ggplot(sum_origin, 
+                     aes(x=factor(isocntry, sort_origin), y=count, fill = factor(qc19, levels = c("3","2", "1")))) +
+  geom_bar(position="fill", stat="identity") +
+    theme_minimal() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual( values = c("lightgrey", "indianred", "deepskyblue4")) +
+  labs(x = "", y = "Support Level",
+       title = "Original Responses") + 
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 11),
+        axis.title = element_blank())
+
+library(ggpubr)
+ggarrange(g_origin, g_enhanced,
+                  nrow = 2) %>% 
+  annotate_figure(top = text_grob("Comparison of Enhanced Vs. Original Responses", face = "bold", size = 16, hjust=0.5),
+                  left = text_grob("Support Level", rot = 90),
+                  bottom = text_grob("Country"))
 ```
