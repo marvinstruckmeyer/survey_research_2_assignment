@@ -2,6 +2,8 @@
 title: "Survey II Final Project"
 author: "Isabel Monge, Phong Duong & Marvin Struckmeyer"
 output: html_document
+theme: cerulean
+toc: true
 date: "2025-03-14"
 editor_options: 
   markdown: 
