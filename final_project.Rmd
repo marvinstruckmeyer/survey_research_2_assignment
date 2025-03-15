@@ -3489,36 +3489,69 @@ ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
 
 ```{r}
 # Loading original full dataset (without removing DK answers)
+qc19_uniterated <- read_rds("df_rf_enriched.rds") %>% select(qc19) %>% pull()
 full_data <- read_rds("df_rf_enriched_new.rds") %>% 
-  select(-1)
+  select(-1) 
+full_data$qc19 <- qc19_uniterated  
 
 full_pred <- predict(rf_smote, full_data) # Prediction using RF synthetic data
 full_data$pred <- full_pred                # Create new column of the prediction
 
 # Replace DK answers with predicted data
-fulldata <- full_data %>% 
-  mutate(qc19 = ifelse(qc19 == 3, pred, qc19))
+full_data <- full_data %>% 
+  mutate(qc19_enhanced = ifelse(qc19 == 3, pred, qc19))
 
 #-----------------------------------------------------------------------------
-# Summarize data by country
-sum <- full_data %>% 
+# (Enhanced) Summarize data by country
+sum_enhanced <- full_data %>% 
+  group_by(isocntry, qc19_enhanced) %>% 
+  summarise(count = n()) %>% 
+  group_by(isocntry) %>% 
+  mutate(pcg = count/sum(count))
+# (Enhanced) Ranking of countries list
+sort_enhanced <- sum%>%
+  filter(qc19_enhanced == 1) %>% 
+  arrange(desc(pcg)) %>% 
+  pull(isocntry)
+
+# (Original) Summarize data by country
+sum_origin <- full_data %>% 
   group_by(isocntry, qc19) %>% 
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
-# Ranking of countries list
-sort <- sum%>%
+# (Original) Ranking of countries list
+sort_origin <- sum_origin%>%
   filter(qc19 == 1) %>% 
   arrange(desc(pcg)) %>% 
   pull(isocntry)
 
 #-----------------------------------------------------------------------------
 # Visualization of support level with predicted answers of DK responses
-ggplot(sum, aes(x=factor(isocntry, sort), y=count, fill = factor(qc19, levels = c("2", "1")))) +
+g_enhanced <- ggplot(sum_enhanced, 
+                     aes(x=factor(isocntry, sort_enhanced), y=count, fill = factor(qc19_enhanced, levels = c("2", "1")))) +
   geom_bar(position="fill", stat="identity") +
     theme_minimal() +
   scale_y_continuous(labels = scales::percent) +
-  scale_fill_manual( values = c("lightgrey", "deepskyblue4")) +
-  labs(x = "Country", y = "Support") + 
-  theme(legend.position = "none") 
+  scale_fill_manual( values = c("indianred", "deepskyblue4")) +
+  labs(x = "Country", y = "Support Level",
+       title = "Enhanced Responses") + 
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 14))
+
+g_origin <- ggplot(sum_origin, 
+                     aes(x=factor(isocntry, sort_origin), y=count, fill = factor(qc19, levels = c("3","2", "1")))) +
+  geom_bar(position="fill", stat="identity") +
+    theme_minimal() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual( values = c("lightgrey", "indianred", "deepskyblue4")) +
+  labs(x = "", y = "Support Level",
+       title = "Original Responses") + 
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 14))
+
+ggpubr::ggarrange(g_origin, g_enhanced,
+                  nrow = 2) %>% 
+  ggpubr::annotate_figure(top = ggpubr::text_grob("Comparison of Enhanced Vs. Original Responses",
+                                                  face = "bold", size = 16, hjust=0.5))
 ```
