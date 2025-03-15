@@ -1,9 +1,10 @@
 ---
 title: "Survey II Final Project"
 author: "Isabel Monge, Phong Duong & Marvin Struckmeyer"
-output: html_document
-theme: cerulean
-toc: true
+output: 
+  html_document:
+    toc: true
+    theme: cerulean
 date: "2025-03-14"
 editor_options: 
   markdown: 
@@ -1919,7 +1920,7 @@ write_rds(df_reduced, "df_reduced.rds")
 ### Individual Level Variables
 
 ```{r}
-# define variable blocks 
+# define variable blocks
 block_demographics <- c(
   "age", "gender", "education", "d8r2",
   "occupation", "urban_rural", "financial_insecurity",
@@ -1957,7 +1958,7 @@ block_paradata <- c(
 # outcome variable
 outcome_var <- "qc19"
 
-# function to compute and plot top correlations 
+# function to compute and plot top correlations
 plot_top_correlations <- function(data, vars_block, outcome = "qc19", block_title = "Block") {
   needed_vars <- intersect(vars_block, names(data))
   df_block <- data[, c(outcome, needed_vars), drop = FALSE]
@@ -1975,10 +1976,10 @@ plot_top_correlations <- function(data, vars_block, outcome = "qc19", block_titl
       cor(df_block_num[[var]], df_block_num[[outcome]], use = "complete.obs")
     })
   )
-  
+
   # sort by absolute correlation for readability & keep top 15
   cor_df <- cor_df %>% arrange(desc(abs(correlation))) %>% head(15)
-  
+
   # plot top correlated variables
   ggplot(cor_df, aes(x = reorder(variable, correlation), y = correlation)) +
     geom_bar(stat = "identity", aes(fill = correlation > 0)) +
@@ -1990,7 +1991,7 @@ plot_top_correlations <- function(data, vars_block, outcome = "qc19", block_titl
       y = paste("Correlation with", outcome)
     ) +
     theme_minimal() +
-    scale_fill_manual(values = c("firebrick", "steelblue"), 
+    scale_fill_manual(values = c("firebrick", "steelblue"),
                       name = "Direction",
                       labels = c("Negative", "Positive"))
 }
@@ -2001,37 +2002,37 @@ plot_top_correlations(df_reduced, block_personal_identity, "qc19", "PERSONAL IDE
 plot_top_correlations(df_reduced, block_discrimination, "qc19", "DISCRIMINATION")
 plot_top_correlations(df_reduced, block_paradata, "qc19", "PARADATA")
 
-### Random forest for individual variables
-# train Random Forest model 
-rf_model <- ranger(
-  formula = qc19 ~ ., 
-  data = train_data,
-  importance = "impurity", 
-  num.trees = 500,
-  mtry = floor(sqrt(ncol(train_data) - 1)), 
-  probability = TRUE
-)
-
-# extract and plot variable importance
-var_importance <- rf_model$variable.importance
-
-# Convert to data frame and sort
-var_importance_df <- data.frame(
-  Variable = names(var_importance),
-  Importance = as.numeric(var_importance)
-) %>%
-  arrange(desc(Importance))
-
-# plot variable importance
-ggplot(var_importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
-  geom_bar(stat = "identity", fill = "#4682B4") +
-  coord_flip() +
-  theme_minimal() +
-  labs(
-    title = "Variable Importance from Random Forest",
-    x = "Variables",
-    y = "Importance"
- )
+# ### Random forest for individual variables
+# # train Random Forest model 
+# rf_model <- ranger(
+#   formula = qc19 ~ ., 
+#   data = train_data,
+#   importance = "impurity", 
+#   num.trees = 500,
+#   mtry = floor(sqrt(ncol(train_data) - 1)), 
+#   probability = TRUE
+# )
+# 
+# # extract and plot variable importance
+# var_importance <- rf_model$variable.importance
+# 
+# # Convert to data frame and sort
+# var_importance_df <- data.frame(
+#   Variable = names(var_importance),
+#   Importance = as.numeric(var_importance)
+# ) %>%
+#   arrange(desc(Importance))
+# 
+# # plot variable importance
+# ggplot(var_importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
+#   geom_bar(stat = "identity", fill = "#4682B4") +
+#   coord_flip() +
+#   theme_minimal() +
+#   labs(
+#     title = "Variable Importance from Random Forest",
+#     x = "Variables",
+#     y = "Importance"
+#  )
 ```
 
 ### Country Level Variables
@@ -3509,7 +3510,7 @@ sum_enhanced <- full_data %>%
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
 # (Enhanced) Ranking of countries list
-sort_enhanced <- sum%>%
+sort_enhanced <- sum_enhanced%>%
   filter(qc19_enhanced == 1) %>% 
   arrange(desc(pcg)) %>% 
   pull(isocntry)
