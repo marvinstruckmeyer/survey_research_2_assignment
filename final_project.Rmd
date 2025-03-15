@@ -3447,7 +3447,7 @@ cMatrix %>% slice_max(Accuracy, n = 3)
 # Prediction on country level
 
 country_comp <- test            # replicate test set
-country_comp$pred <- p_rf_s    # create new column of predictions from GBM (using synthetic data generation)
+country_comp$pred <- p_rf_s    # create new column of predictions from Random Forest (using synthetic data generation)
 
 #------------------------------------------------------------------------
 # Summarizing real support level of countries 
@@ -3492,7 +3492,7 @@ ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
 full_data <- read_rds("df_rf_enriched_new.rds") %>% 
   select(-1)
 
-full_pred <- predict(gbm_smote, full_data) # Prediction using GBM synthetic data
+full_pred <- predict(rf_smote, full_data) # Prediction using RF synthetic data
 full_data$pred <- full_pred                # Create new column of the prediction
 
 # Replace DK answers with predicted data
