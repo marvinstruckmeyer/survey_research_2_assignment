@@ -13,6 +13,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
 ```
 
 ```{r, message=FALSE}
@@ -2471,7 +2472,15 @@ ggplot(religion_support, aes(x = reorder(religion_group, support_rate), y = supp
 
 Based on the results of our descriptive analysis, we should use the
 following variables in the multilevel regression model: z_rainbow_score,
-z_gender_equality, regions, z_v2x_libdem, z_v2z_egaldem, norm_gdp_2018
+z_gender, regions, z_v2x_libdem, z_v2z_egaldem,
+z_functioning_of_government and norm_gdp_2018. First, note that we found
+that z_functioning_of_government is also highly positively correlated to
+to transgender support (we did not show it here because of problems when
+adding together the individual pieces of code). Second, note that while
+region seems to be highly related to transgender support, we decided not
+to include it. First, region is descriptive rather than explanatory.
+Second, including it would create a three-level multi-level structure
+rather than a two-level strucutre.
 
 ```{r}
 ### use descriptive ML for predictor selection
@@ -3186,6 +3195,10 @@ train %>%
         legend.position = "none")
 ```
 
+There is some degree of imbalance in the data for our targeted variable.
+We will apply all 3 balancing techniques (Undersampling, Oversampling,
+and Synthetic Data) during resampling.
+
 ```{r}
 # Elastic Net Dimension Reduction
 
@@ -3389,6 +3402,10 @@ summary(results_train)
 bwplot(results_train, scales = list(x = list(relation = "free"), y = list(relation = "free")))
 ```
 
+Random Forest model trained with synthetic data generation seems to be
+the best-performing model on training dataset. We will evaluate again
+the performance of the models on testing set.
+
 ```{r}
 # Prediction on individual level
 
@@ -3444,6 +3461,10 @@ cMatrix <- cMatrix %>%
 cMatrix %>% slice_max(Accuracy, n = 3)
 ```
 
+The Random Forest with synthetic data balancing performs the best on the
+testing, even with slightly better performance than in the training set.
+We, therefore, will use it as the model for prediction.
+
 ```{r}
 # Prediction on country level
 
@@ -3485,6 +3506,9 @@ ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
 ```
+
+We can see that on a country level, the predictions from our models are
+quite accurate and reflects well the support level of the real dataset.
 
 ### Filling The Gap
 
@@ -3560,3 +3584,11 @@ ggarrange(g_origin, g_enhanced,
                   left = text_grob("Support Level", rot = 90),
                   bottom = text_grob("Country"))
 ```
+
+With the trained model, we filled in the surveys that answered "DK" and
+estimated a better picture of the support level of all the countries.
+The ranking are close to original ranking with some little movement of
+positions. Spain is estimated to have the highest level of support
+instead of the Netherlands while Czech Republic is expected to have less
+support overall if all respondents gave a "Yes" or "No" answer to
+question qc19.
