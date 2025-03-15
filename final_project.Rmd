@@ -3174,9 +3174,15 @@ train %>%
   mutate(percent = count/sum(count)) %>% 
   arrange(desc(percent)) %>% 
   ungroup() %>% 
-  ggplot(aes(x= qc19, y=percent, label=count)) +
+  ggplot(aes(x= qc19, y=percent, label=count, fill = qc19)) +
   geom_col() +
-  geom_text(vjust = -0.3) 
+  geom_text(vjust = -0.3) +
+  scale_y_continuous(labels=scales::percent) +
+  theme_minimal() +
+  labs(y = "Percentage", x = "qc19",
+       title = "Mild Imbalance of Data (60%-40%) in qc19 Categories") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+        legend.position = "none")
 ```
 
 ```{r}
