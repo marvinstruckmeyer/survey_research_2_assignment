@@ -1916,6 +1916,126 @@ write_rds(df_reduced, "df_reduced.rds")
 
 ## Descriptive analysis 2
 
+### Individual Level Variables
+
+```{r}
+# define variable blocks 
+block_demographics <- c(
+  "age", "gender", "education", "d8r2",
+  "occupation", "urban_rural", "financial_insecurity",
+  "social_class", "religion", "political_ideology",
+  "lgb_friends", "trans_friends"
+)
+
+block_personal_identity <- c(
+  "ethnic_minority", "skin_color_minority", "religious_minority",
+  "sexual_lgbt_minority", "disability_minority", "other_minority", "none_minority"
+)
+
+block_discrimination <- c(
+  "trans_discrimination_country", "trans_discrimination_personal",
+  "trans_discrimination_workplace", "trans_discrimination_political",
+  "country_discrimination_efforts", "country_discrimination_efforts_recoded",
+  "trans_workplace_diversity", "trans_colleague", "trans_colleague_recoded",
+  "trans_child_relationship", "trans_child_relationship_recoded",
+  "lgb_rights", "same_sex_relationship", "same_sex_marriage",
+  "lgb_school_materials", "trans_school_materials", "intersex_school_materials",
+  "two_men_public_affection", "two_men_public_affection_recoded",
+  "two_women_public_affection", "two_women_public_affection_recoded",
+  "non_gendered_docs"
+)
+
+block_paradata <- c(
+  "interview_date",
+  "interview_start_time",
+  "interview_duration",
+  "interview_duration_recoded",
+  "people_present_during_interview",
+  "respondent_cooperation"
+)
+
+# outcome variable
+outcome_var <- "qc19"
+
+# function to compute and plot top correlations 
+plot_top_correlations <- function(data, vars_block, outcome = "qc19", block_title = "Block") {
+  needed_vars <- intersect(vars_block, names(data))
+  df_block <- data[, c(outcome, needed_vars), drop = FALSE]
+  if (!is.numeric(df_block[[outcome]])) {
+    df_block[[outcome]] <- as.numeric(as.character(df_block[[outcome]]))
+  }
+  df_block_num <- df_block %>% select(where(is.numeric))
+  if (!(outcome %in% names(df_block_num))) {
+    message("Outcome variable not numeric in ", block_title)
+    return(NULL)
+  }
+  cor_df <- data.frame(
+    variable = setdiff(names(df_block_num), outcome),
+    correlation = sapply(setdiff(names(df_block_num), outcome), function(var) {
+      cor(df_block_num[[var]], df_block_num[[outcome]], use = "complete.obs")
+    })
+  )
+  
+  # sort by absolute correlation for readability & keep top 15
+  cor_df <- cor_df %>% arrange(desc(abs(correlation))) %>% head(15)
+  
+  # plot top correlated variables
+  ggplot(cor_df, aes(x = reorder(variable, correlation), y = correlation)) +
+    geom_bar(stat = "identity", aes(fill = correlation > 0)) +
+    coord_flip() +
+    labs(
+      title = paste0("Top Correlated Variables with ", outcome),
+      subtitle = paste0(block_title, " - Aggregated Data"),
+      x = "Variables",
+      y = paste("Correlation with", outcome)
+    ) +
+    theme_minimal() +
+    scale_fill_manual(values = c("firebrick", "steelblue"), 
+                      name = "Direction",
+                      labels = c("Negative", "Positive"))
+}
+
+# generate correlation plots for each block
+plot_top_correlations(df_reduced, block_demographics, "qc19", "DEMOGRAPHICS")
+plot_top_correlations(df_reduced, block_personal_identity, "qc19", "PERSONAL IDENTITY")
+plot_top_correlations(df_reduced, block_discrimination, "qc19", "DISCRIMINATION")
+plot_top_correlations(df_reduced, block_paradata, "qc19", "PARADATA")
+
+### Random forest for individual variables
+# train Random Forest model 
+rf_model <- ranger(
+  formula = qc19 ~ ., 
+  data = train_data,
+  importance = "impurity", 
+  num.trees = 500,
+  mtry = floor(sqrt(ncol(train_data) - 1)), 
+  probability = TRUE
+)
+
+# extract and plot variable importance
+var_importance <- rf_model$variable.importance
+
+# Convert to data frame and sort
+var_importance_df <- data.frame(
+  Variable = names(var_importance),
+  Importance = as.numeric(var_importance)
+) %>%
+  arrange(desc(Importance))
+
+# plot variable importance
+ggplot(var_importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "#4682B4") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Variable Importance from Random Forest",
+    x = "Variables",
+    y = "Importance"
+ )
+```
+
+### Country Level Variables
+
 ```{r}
 # load datasets
 df_reduced <- readRDS("df_reduced.rds")
@@ -2348,7 +2468,9 @@ ggplot(religion_support, aes(x = reorder(religion_group, support_rate), y = supp
     axis.text.y = element_text(face = "bold"))
 ```
 
-Based on the results of our descriptive analysis, we should use the following variables in the multilevel regression model: z_rainbow_score, z_gender_equality, regions, z_v2x_libdem, z_v2z_egaldem, norm_gdp_2018
+Based on the results of our descriptive analysis, we should use the
+following variables in the multilevel regression model: z_rainbow_score,
+z_gender_equality, regions, z_v2x_libdem, z_v2z_egaldem, norm_gdp_2018
 
 ```{r}
 ### use descriptive ML for predictor selection
@@ -2412,7 +2534,8 @@ ggplot(var_importance_df, aes(x = reorder(Variable, Importance), y = Importance)
   )
 ```
 
-We see similar variables are most important using descriptive ML, reinforcing our previous decision. 
+We see similar variables are most important using descriptive ML,
+reinforcing our previous decision.
 
 ## Explanatory Modeling
 
