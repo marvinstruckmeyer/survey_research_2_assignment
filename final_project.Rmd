@@ -3148,6 +3148,7 @@ p6
 ### Data
 
 ```{r}
+# Reading data set that was already prepared for the ML training
 data <- read_rds("R/data_for_ML.rds")
 data$qc19 <- as.factor(data$qc19)
 ```
@@ -3175,7 +3176,7 @@ train %>%
   ungroup() %>% 
   ggplot(aes(x= qc19, y=percent, label=count)) +
   geom_col() +
-  geom_text(vjust = -0.3)
+  geom_text(vjust = -0.3) 
 ```
 
 ```{r}
@@ -3362,7 +3363,8 @@ svm_under <- read_rds("R/models/svm_enet_under.rds")
 svm_over <- read_rds("R/models/svm_enet_upper.rds")
 # svm_smote <- read_rds("R/models/svm_enet_smote.rds")
 
-
+#-------------------------------------------------------------------
+# Summarizing performance of all models in training data
 results_train <- resamples(list(
   rf_u = rf_under,
   # rf_o = rf_over,
@@ -3412,6 +3414,7 @@ p_list <- list(rf_u = p_rf_u,
             svm_u = p_svm_u
             )
 
+#-------------------------------------------------------------------
 # Create a dataframe of the model's performance
 cMatrix <- as.data.frame(list(
   Model = NA,
@@ -3429,6 +3432,7 @@ for (i in 1:length(p_list)) {
 cMatrix <- cMatrix %>% 
   drop_na()
 
+#-------------------------------------------------------------------
 # Top 3 best-performing models
 cMatrix %>% slice_max(Accuracy, n = 3)
 ```
@@ -3436,21 +3440,23 @@ cMatrix %>% slice_max(Accuracy, n = 3)
 ```{r}
 # Prediction on country level
 
-country_comp <- test 
-country_comp$pred <- p_gbm_s
+country_comp <- test            # replicate test set
+country_comp$pred <- p_gbm_s    # create new column of predictions from GBM (using synthetic data generation)
 
-country_original <- country_comp %>% 
+#------------------------------------------------------------------------
+# Summarizing real support level of countries 
+country_original <- country_comp %>%  
   group_by(isocntry, qc19) %>%
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
-
+# Summarizing predicted support level of countries 
 country_pred <- country_comp %>% 
   group_by(isocntry, pred) %>%
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
-
+# Joining the previous 2 summarized dataframes
 comparison <- cbind(select(country_original, c(isocntry,qc19, pcg)), country_pred$pcg) %>% 
   rename("response" = 2,
          "original" = 3,
@@ -3458,6 +3464,8 @@ comparison <- cbind(select(country_original, c(isocntry,qc19, pcg)), country_pre
   mutate(response = factor(c("1", "2"), levels = c("2", "1"))) %>% 
   pivot_longer(cols = c("original", "pred"), names_to = "type")
 
+#-----------------------------------------------------------------------------
+# Visualization of both predicted and original support levels among countries
 ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
   geom_bar(position="stack", stat="identity") +
   theme_minimal() +
@@ -3471,27 +3479,32 @@ ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
 ### Filling The Gap
 
 ```{r}
+# Loading original full dataset (without removing DK answers)
 full_data <- read_rds("df_rf_enriched_new.rds") %>% 
   select(-1)
 
-full_pred <- predict(gbm_smote, full_data)
+full_pred <- predict(gbm_smote, full_data) # Prediction using GBM synthetic data
+full_data$pred <- full_pred                # Create new column of the prediction
 
-full_data$pred <- full_pred
-
+# Replace DK answers with predicted data
 fulldata <- full_data %>% 
   mutate(qc19 = ifelse(qc19 == 3, pred, qc19))
 
+#-----------------------------------------------------------------------------
+# Summarize data by country
 sum <- full_data %>% 
   group_by(isocntry, qc19) %>% 
   summarise(count = n()) %>% 
   group_by(isocntry) %>% 
   mutate(pcg = count/sum(count))
-
+# Ranking of countries list
 sort <- sum%>%
   filter(qc19 == 1) %>% 
   arrange(desc(pcg)) %>% 
   pull(isocntry)
 
+#-----------------------------------------------------------------------------
+# Visualization of support level with predicted answers of DK responses
 ggplot(sum, aes(x=factor(isocntry, sort), y=count, fill = factor(qc19, levels = c("2", "1")))) +
   geom_bar(position="fill", stat="identity") +
     theme_minimal() +
