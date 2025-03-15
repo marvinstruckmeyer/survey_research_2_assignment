@@ -3537,7 +3537,8 @@ g_enhanced <- ggplot(sum_enhanced,
   labs(x = "Country", y = "Support Level",
        title = "Enhanced Responses") + 
   theme(legend.position = "none",
-        plot.title = element_text(hjust = 0.5, size = 14))
+        plot.title = element_text(hjust = 0.5, size = 11),
+        axis.title = element_blank())
 
 g_origin <- ggplot(sum_origin, 
                      aes(x=factor(isocntry, sort_origin), y=count, fill = factor(qc19, levels = c("3","2", "1")))) +
@@ -3548,10 +3549,13 @@ g_origin <- ggplot(sum_origin,
   labs(x = "", y = "Support Level",
        title = "Original Responses") + 
   theme(legend.position = "none",
-        plot.title = element_text(hjust = 0.5, size = 14))
+        plot.title = element_text(hjust = 0.5, size = 11),
+        axis.title = element_blank())
 
-ggpubr::ggarrange(g_origin, g_enhanced,
+library(ggpubr)
+ggarrange(g_origin, g_enhanced,
                   nrow = 2) %>% 
-  ggpubr::annotate_figure(top = ggpubr::text_grob("Comparison of Enhanced Vs. Original Responses",
-                                                  face = "bold", size = 16, hjust=0.5))
+  annotate_figure(top = text_grob("Comparison of Enhanced Vs. Original Responses", face = "bold", size = 16, hjust=0.5),
+                  left = text_grob("Support Level", rot = 90),
+                  bottom = text_grob("Country"))
 ```
