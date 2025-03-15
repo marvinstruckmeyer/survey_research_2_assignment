@@ -3447,7 +3447,7 @@ cMatrix %>% slice_max(Accuracy, n = 3)
 # Prediction on country level
 
 country_comp <- test            # replicate test set
-country_comp$pred <- p_gbm_s    # create new column of predictions from GBM (using synthetic data generation)
+country_comp$pred <- p_rf_s    # create new column of predictions from GBM (using synthetic data generation)
 
 #------------------------------------------------------------------------
 # Summarizing real support level of countries 
@@ -3468,7 +3468,8 @@ comparison <- cbind(select(country_original, c(isocntry,qc19, pcg)), country_pre
          "original" = 3,
          "pred" = 4) %>% 
   mutate(response = factor(c("1", "2"), levels = c("2", "1"))) %>% 
-  pivot_longer(cols = c("original", "pred"), names_to = "type")
+  pivot_longer(cols = c("original", "pred"), names_to = "type") %>% 
+  mutate(type = factor(type, labels = c("Original Responses", "Predicted Responses")))
 
 #-----------------------------------------------------------------------------
 # Visualization of both predicted and original support levels among countries
@@ -3477,9 +3478,11 @@ ggplot(comparison, aes(x= reorder(isocntry, value), y=value, fill=response)) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent) +
   scale_fill_manual( values = c("lightgrey", "deepskyblue4")) +
-  facet_wrap(vars(type), nrow = 2, scales = "free") +
-  labs(x = "Country", y = "Support") + 
-  theme(legend.position = "none")
+  facet_wrap(~type, nrow = 2, scales = "free") +
+  labs(x = "Country", y = "Support Level",
+       title = "Predicted Responses (RF) Displays Similar Results to Real Responses") + 
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 14))
 ```
 
 ### Filling The Gap
